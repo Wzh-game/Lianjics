@@ -5,6 +5,7 @@ on:
     paths:
       - "Lianics-upload-root.zip"
       - "Lianjics-upload-root.zip"
+      - ".github/workflows/extract-project-zip.yml"
   workflow_dispatch:
 
 permissions:
