@@ -1,0 +1,38 @@
+name: Build game page from source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "build.js"
+      - ".github/workflows/build-game.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Build single-page game
+        run: |
+          node --version
+          node build.js
+          test -s index.html
+      - name: Commit generated page
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Generated page is already up to date."
+          else
+            git commit -m "Build game page from updated source"
+            git push
+          fi
