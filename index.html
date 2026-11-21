@@ -5324,14 +5324,24 @@ DF.WujiaMusic = (() => {
     const audio = getAudio();
     const button = getButton();
     if (!audio || !button) return;
-    if (audio.paused) {
-      try {
-        await audio.play();
-      } catch (err) {
-        DF.toast('音乐暂时无法播放，请检查音频文件或再次点击');
-      }
-    } else {
+
+    // 正在播放时再次点击即可暂停；每次开始播放前输入专属口令。
+    if (!audio.paused) {
       audio.pause();
+      return;
+    }
+
+    const password = window.prompt('吴家村专属小曲《十一笔》\\n请输入播放口令：');
+    if (password === null) return;
+    if (password.trim() !== '老鼠') {
+      if (typeof DF.toast === 'function') DF.toast('口令不正确，无法播放《十一笔》');
+      return;
+    }
+
+    try {
+      await audio.play();
+    } catch (err) {
+      if (typeof DF.toast === 'function') DF.toast('音乐暂时无法播放，请检查音频文件或再次点击');
     }
   }
 
