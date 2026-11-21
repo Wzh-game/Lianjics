@@ -2748,7 +2748,8 @@ DF.init = function () {
   DF.mapCache = { base: {
     objects: scene.children.filter(o => !beforeWorld.has(o)),
     meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
-    obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun
+    obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
+    fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone()
   } };
   DF.Profile.load();
   DF.buildExtractionWorld(scene);
@@ -3517,11 +3518,14 @@ DF.applyMap = function (id) {
     entry = DF.mapCache[id] = {
       objects: DF.scene.children.filter(o => !before.has(o)),
       meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
-      obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun
+      obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
+      fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone()
     };
   } else {
     entry.objects.forEach(o => DF.scene.add(o));
   }
+  DF.scene.fog = entry.fog && entry.fog.clone();
+  DF.scene.background = entry.background && entry.background.clone();
   DF.worldMeshes = entry.meshes.slice();
   DF.colliders = entry.colliders.concat(DF.lootColliders);
   DF.obstacleMeta = entry.obstacleMeta.slice();
