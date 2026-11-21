@@ -317,6 +317,16 @@ body.touchmode #searchbar{top:auto;bottom:35%;width:200px}
 body.touchmode #extractPanel{top:22%;width:260px}
 body.touchmode #matchinfo{letter-spacing:1px}
 body.touchmode #joystickHint{display:none}
+
+/* 吴家村隐藏曲：100 杀解锁 */
+#wujia-music-card{margin-top:12px;padding:11px 13px;background:linear-gradient(110deg,rgba(92,55,20,.22),rgba(20,26,16,.88));border:1px solid #6b512b}
+#wujia-music-card .wm-title{font-size:13px;letter-spacing:2px;color:#ffcf83;font-weight:700}
+#wujia-music-card .wm-progress{font-size:12px;color:var(--dim);margin-top:5px}
+#wujia-music-btn{position:fixed;right:16px;top:16px;z-index:80;padding:9px 13px;border:1px solid #b17a35;border-radius:8px;background:rgba(31,24,14,.92);color:#ffcf83;font:600 13px inherit;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35);pointer-events:auto}
+#wujia-music-btn:disabled{opacity:.4;cursor:not-allowed}
+#wujia-music-btn.playing{background:rgba(105,64,20,.96);border-color:#ffbf62;color:#fff}
+@media(max-width:760px){#wujia-music-btn{top:116px;right:12px;padding:7px 10px;font-size:11px}}
+
 </style>
 </head>
 <body>
@@ -405,6 +415,10 @@ body.touchmode #joystickHint{display:none}
     </div>
     <label class="lab">战术档案</label>
     <div class="profbox" id="profile-box"></div>
+    <div id="wujia-music-card">
+      <div class="wm-title">吴家村秘曲 ·《十一笔》</div>
+      <div class="wm-progress" id="wujia-music-progress">累计击杀 0 / 100 · 尚未解锁</div>
+    </div>
     <div class="legend">
       <span><i style="background:#ffc14a"></i>未搜索容器</span>
       <span><i style="background:#7dd069"></i>已开放撤离点</span>
@@ -540,6 +554,8 @@ body.touchmode #joystickHint{display:none}
   </div>
 </div>
 
+<audio id="wujia-village-track" src="assets/wujia-village-shiyibi.mp3" preload="none" loop></audio>
+<button id="wujia-music-btn" class="hidden" type="button" aria-label="播放或暂停吴家村专属小曲">🎵 播放《十一笔》</button>
 <div id="toast"></div>
 
 <script>
@@ -5267,6 +5283,102 @@ DF.renderProfile = function () {
     <div><div class="k">阵亡</div><div class="v" style="color:#c05a4a">${p.died}</div></div>
     <div><div class="k">最高单局</div><div class="v">$${p.best.toLocaleString()}</div></div>`;
 };
+
+
+/* ============================================================
+   吴家村专属小曲《十一笔》
+   累计击杀 100 人解锁；档案数据持久化，点击按钮后播放（兼容 iOS 音频手势限制）
+   ============================================================ */
+DF.WujiaMusic = (() => {
+  const REQUIRED_KILLS = 100;
+  let wasUnlocked = false;
+  let initialized = false;
+
+  const getKills = () => Math.max(0, Math.floor(Number(DF.Profile && DF.Profile.data && DF.Profile.data.kills) || 0));
+  const getAudio = () => document.getElementById('wujia-village-track');
+  const getButton = () => document.getElementById('wujia-music-btn');
+
+  function refresh(notify) {
+    const kills = getKills();
+    const unlocked = kills >= REQUIRED_KILLS;
+    const progress = document.getElementById('wujia-music-progress');
+    const button = getButton();
+    if (progress) {
+      progress.textContent = unlocked
+        ? '已解锁 · 累计击杀 ' + kills + ' 人'
+        : '累计击杀 ' + kills + ' / ' + REQUIRED_KILLS + ' · 还差 ' + (REQUIRED_KILLS - kills) + ' 人';
+    }
+    if (button) {
+      button.classList.toggle('hidden', !unlocked);
+      button.disabled = !unlocked;
+    }
+    if (notify && unlocked && !wasUnlocked && typeof DF.toast === 'function') {
+      DF.toast('🎉 累计击杀达到 100！吴家村专属小曲《十一笔》已解锁');
+    }
+    wasUnlocked = unlocked;
+    return unlocked;
+  }
+
+  async function toggle() {
+    if (!refresh(false)) return;
+    const audio = getAudio();
+    const button = getButton();
+    if (!audio || !button) return;
+    if (audio.paused) {
+      try {
+        await audio.play();
+      } catch (err) {
+        DF.toast('音乐暂时无法播放，请检查音频文件或再次点击');
+      }
+    } else {
+      audio.pause();
+    }
+  }
+
+  function init() {
+    if (initialized) return;
+    initialized = true;
+    const button = getButton();
+    const audio = getAudio();
+    if (button) button.addEventListener('click', toggle);
+    if (audio && button) {
+      audio.addEventListener('play', () => {
+        button.textContent = 'Ⅱ 暂停《十一笔》';
+        button.classList.add('playing');
+      });
+      audio.addEventListener('pause', () => {
+        button.textContent = '🎵 播放《十一笔》';
+        button.classList.remove('playing');
+      });
+      audio.addEventListener('error', () => {
+        if (!audio.paused) audio.pause();
+        DF.toast('《十一笔》音频文件未找到，请确认 assets/wujia-village-shiyibi.mp3 已上传');
+      });
+    }
+
+    // 战术档案在每局结算时累计本局击杀；包装原方法，避免改变既有资产结算逻辑。
+    if (DF.Profile && !DF.Profile._wujiaMusicWrapped) {
+      const addExtraction = DF.Profile.addExtraction.bind(DF.Profile);
+      const addDeath = DF.Profile.addDeath.bind(DF.Profile);
+      DF.Profile.addExtraction = function () {
+        const result = addExtraction(...arguments);
+        refresh(true);
+        return result;
+      };
+      DF.Profile.addDeath = function () {
+        const result = addDeath(...arguments);
+        refresh(true);
+        return result;
+      };
+      DF.Profile._wujiaMusicWrapped = true;
+    }
+    refresh(false);
+  }
+
+  return { init, refresh, toggle, requiredKills: REQUIRED_KILLS };
+})();
+
+DF.WujiaMusic.init();
 
 </script>
 </body>
