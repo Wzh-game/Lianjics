@@ -425,6 +425,8 @@ DF.initWorld = function (scene, mapId) {
       const body = new T.Mesh(new T.CylinderGeometry(r, r, h, 20), tankMat);
       body.position.set(x, h / 2, z); body.castShadow = true; body.receiveShadow = true;
       scene.add(body); DF.worldMeshes.push(body);
+      DF.colliders.push({minx:x-r,maxx:x+r,miny:0,maxy:h,minz:z-r,maxz:z+r});
+      DF.obstacleMeta.push({x,z,w:r*2,d:r*2,h});
       box(x, 0, z, r * 1.8, 0.65, r * 1.8, M.wallDark);
       const roof = new T.Mesh(new T.CylinderGeometry(r * 1.02, r * 1.02, 0.22, 20), rustMat);
       roof.position.set(x, h + 0.08, z); scene.add(roof);
@@ -481,8 +483,8 @@ DF.initWorld = function (scene, mapId) {
   } else if (mapId === 'harbor') {
     // 临海港口：彩色货柜、装卸仓库、岸边吊机与成排系缆设施。
     const craneMat = new T.MeshStandardMaterial({ color: 0xc18a3c, metalness: 0.68, roughness: 0.42 });
-    const sea = new T.Mesh(new T.PlaneGeometry(400,400), new T.MeshStandardMaterial({ color: 0x315f70, roughness: 0.34, metalness: 0.18 }));
-    sea.rotation.x=-Math.PI/2; sea.position.set(0,-0.12,0); scene.add(sea);
+    const sea = new T.Mesh(new T.PlaneGeometry(18,104), new T.MeshStandardMaterial({ color: 0x315f70, roughness: 0.34, metalness: 0.18 }));
+    sea.rotation.x=-Math.PI/2; sea.position.set(79,0.018,-18); sea.receiveShadow=true; scene.add(sea);
     // 港区货柜：不同高度与朝向形成多条射击走廊。
     const cm=[M.contA,M.contB,M.contC];
     [[-52,-34,0,0],[-38,-34,1,1],[-18,-28,0,0],[18,-34,1,0],[38,-30,0,1],[56,-8,1,0],[-54,18,1,0],[-30,30,0,1],[0,34,1,0],[28,28,0,0],[52,44,1,0]].forEach(([x,z,rot,stack],i)=>{
