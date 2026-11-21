@@ -1,7 +1,7 @@
 const fs=require('fs');
 const head=fs.readFileSync('src/00_head.html','utf8');
 const three=fs.readFileSync('src/three.min.js','utf8');
-const parts=['01_core.js','02_entities.js','03_net.js','04_game.js','05_extract.js','06_extract_ui.js'].map(f=>fs.readFileSync('src/'+f,'utf8')).join('\n\n');
+const parts=['01_core.js','02_entities.js','03_net.js','04_game.js','05_extract.js','06_extract_ui.js', '07_wujia_music.js'].map(f=>fs.readFileSync('src/'+f,'utf8')).join('\n\n');
 let html=head.replace('/*__THREE_INLINE__*/', ()=>three);
 html+='\n'+parts+'\n</script>\n</body>\n</html>\n';
 fs.writeFileSync('index.html',html);

@@ -317,6 +317,16 @@ body.touchmode #searchbar{top:auto;bottom:35%;width:200px}
 body.touchmode #extractPanel{top:22%;width:260px}
 body.touchmode #matchinfo{letter-spacing:1px}
 body.touchmode #joystickHint{display:none}
+
+/* 吴家村隐藏曲：100 杀解锁 */
+#wujia-music-card{margin-top:12px;padding:11px 13px;background:linear-gradient(110deg,rgba(92,55,20,.22),rgba(20,26,16,.88));border:1px solid #6b512b}
+#wujia-music-card .wm-title{font-size:13px;letter-spacing:2px;color:#ffcf83;font-weight:700}
+#wujia-music-card .wm-progress{font-size:12px;color:var(--dim);margin-top:5px}
+#wujia-music-btn{position:fixed;right:16px;top:16px;z-index:80;padding:9px 13px;border:1px solid #b17a35;border-radius:8px;background:rgba(31,24,14,.92);color:#ffcf83;font:600 13px inherit;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35);pointer-events:auto}
+#wujia-music-btn:disabled{opacity:.4;cursor:not-allowed}
+#wujia-music-btn.playing{background:rgba(105,64,20,.96);border-color:#ffbf62;color:#fff}
+@media(max-width:760px){#wujia-music-btn{top:116px;right:12px;padding:7px 10px;font-size:11px}}
+
 </style>
 </head>
 <body>
@@ -405,6 +415,10 @@ body.touchmode #joystickHint{display:none}
     </div>
     <label class="lab">战术档案</label>
     <div class="profbox" id="profile-box"></div>
+    <div id="wujia-music-card">
+      <div class="wm-title">吴家村秘曲 ·《十一笔》</div>
+      <div class="wm-progress" id="wujia-music-progress">累计击杀 0 / 100 · 尚未解锁</div>
+    </div>
     <div class="legend">
       <span><i style="background:#ffc14a"></i>未搜索容器</span>
       <span><i style="background:#7dd069"></i>已开放撤离点</span>
@@ -540,6 +554,8 @@ body.touchmode #joystickHint{display:none}
   </div>
 </div>
 
+<audio id="wujia-village-track" src="assets/wujia-village-shiyibi.mp3" preload="none" loop></audio>
+<button id="wujia-music-btn" class="hidden" type="button" aria-label="播放或暂停吴家村专属小曲">🎵 播放《十一笔》</button>
 <div id="toast"></div>
 
 <script>
