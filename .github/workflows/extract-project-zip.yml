@@ -3,6 +3,7 @@ name: Extract uploaded project ZIP
 on:
   push:
     paths:
+      - "Lianics-upload-root.zip"
       - "Lianjics-upload-root.zip"
   workflow_dispatch:
 
@@ -24,34 +25,49 @@ jobs:
           from pathlib import Path, PurePosixPath
           import zipfile
 
-          archive = Path("Lianjics-upload-root.zip")
-          if not archive.is_file():
-              raise SystemExit("Lianjics-upload-root.zip was not found in the repository root.")
+          candidates = [Path("Lianics-upload-root.zip"), Path("Lianjics-upload-root.zip")]
+          archive = next((p for p in candidates if p.is_file()), None)
+          if archive is None:
+              raise SystemExit("No uploaded project ZIP was found in the repository root.")
 
           allowed_roots = {"README.md", "build.js", "index.html"}
+          required = [
+              "README.md", "build.js", "index.html",
+              "src/00_head.html", "src/01_core.js",
+              "src/02_entities.js", "src/03_net.js",
+              "src/04_game.js", "src/05_extract.js",
+              "src/06_extract_ui.js", "src/three.min.js",
+          ]
+
           with zipfile.ZipFile(archive) as zf:
               bad = zf.testzip()
               if bad:
                   raise SystemExit(f"ZIP integrity check failed: {bad}")
 
-              names = zf.namelist()
-              for name in names:
+              extracted = set()
+              for name in zf.namelist():
                   p = PurePosixPath(name)
                   if p.is_absolute() or ".." in p.parts:
                       raise SystemExit(f"Unsafe archive path: {name}")
-                  if not (name in allowed_roots or name.startswith("src/")):
+                  if name.endswith("/") or name in {".sudo_as_admin_successful", "delta/.sudo_as_admin_successful"}:
+                      continue
+
+                  parts = p.parts
+                  if parts and parts[0] == "delta":
+                      parts = parts[1:]
+                  if not parts:
+                      continue
+                  normalized = PurePosixPath(*parts).as_posix()
+
+                  if not (normalized in allowed_roots or normalized.startswith("src/")):
                       raise SystemExit(f"Unexpected file in archive: {name}")
 
-              zf.extractall(".")
+                  target = Path(normalized)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(zf.read(name))
+                  extracted.add(normalized)
 
-          required = [
-              Path("README.md"), Path("build.js"), Path("index.html"),
-              Path("src/00_head.html"), Path("src/01_core.js"),
-              Path("src/02_entities.js"), Path("src/03_net.js"),
-              Path("src/04_game.js"), Path("src/05_extract.js"),
-              Path("src/06_extract_ui.js"), Path("src/three.min.js"),
-          ]
-          missing = [str(p) for p in required if not p.is_file()]
+          missing = sorted(set(required) - extracted)
           if missing:
               raise SystemExit("Missing expected project files: " + ", ".join(missing))
 
