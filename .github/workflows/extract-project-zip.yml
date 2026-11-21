@@ -1,0 +1,71 @@
+name: Extract uploaded project ZIP
+
+on:
+  push:
+    paths:
+      - "Lianjics-upload-root.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Validate and extract project files into repository root
+        run: |
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import zipfile
+
+          archive = Path("Lianjics-upload-root.zip")
+          if not archive.is_file():
+              raise SystemExit("Lianjics-upload-root.zip was not found in the repository root.")
+
+          allowed_roots = {"README.md", "build.js", "index.html"}
+          with zipfile.ZipFile(archive) as zf:
+              bad = zf.testzip()
+              if bad:
+                  raise SystemExit(f"ZIP integrity check failed: {bad}")
+
+              names = zf.namelist()
+              for name in names:
+                  p = PurePosixPath(name)
+                  if p.is_absolute() or ".." in p.parts:
+                      raise SystemExit(f"Unsafe archive path: {name}")
+                  if not (name in allowed_roots or name.startswith("src/")):
+                      raise SystemExit(f"Unexpected file in archive: {name}")
+
+              zf.extractall(".")
+
+          required = [
+              Path("README.md"), Path("build.js"), Path("index.html"),
+              Path("src/00_head.html"), Path("src/01_core.js"),
+              Path("src/02_entities.js"), Path("src/03_net.js"),
+              Path("src/04_game.js"), Path("src/05_extract.js"),
+              Path("src/06_extract_ui.js"), Path("src/three.min.js"),
+          ]
+          missing = [str(p) for p in required if not p.is_file()]
+          if missing:
+              raise SystemExit("Missing expected project files: " + ", ".join(missing))
+
+          archive.unlink()
+          PY
+
+      - name: Commit extracted project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md build.js index.html src/
+          if git diff --cached --quiet; then
+            echo "No extracted project changes to commit."
+          else
+            git commit -m "Upload and extract Lianjics project"
+            git push
+          fi
