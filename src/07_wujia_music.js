@@ -71,8 +71,14 @@ DF.WujiaMusic = (() => {
 
     // 战术档案在每局结算时累计本局击杀；包装原方法，避免改变既有资产结算逻辑。
     if (DF.Profile && !DF.Profile._wujiaMusicWrapped) {
+      const load = DF.Profile.load.bind(DF.Profile);
       const addExtraction = DF.Profile.addExtraction.bind(DF.Profile);
       const addDeath = DF.Profile.addDeath.bind(DF.Profile);
+      DF.Profile.load = function () {
+        const result = load(...arguments);
+        refresh(false);
+        return result;
+      };
       DF.Profile.addExtraction = function () {
         const result = addExtraction(...arguments);
         refresh(true);
