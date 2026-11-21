@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>联机坦克对战（触控版）</title>
+<style>
+:root{--bg:#f5f5f2;--fg:#222;--card:#fff;--bd:#d0d0c8;--btn:#e4e4dd}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1a;--fg:#eee;--card:#262625;--bd:#444;--btn:#3a3a38}}
+body{margin:0;padding:10px;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-bottom:10px}
+button,input,textarea{font:inherit;padding:5px 9px;margin:3px 3px 3px 0}
+textarea{width:98%;height:54px;font-size:11px;-webkit-user-select:text;user-select:text}
+canvas{display:block;margin:0 auto;width:auto;height:auto;max-width:100%;max-height:58vh;background:#2b2f36;border-radius:8px;touch-action:none}
+h3{margin:0 0 8px}small{opacity:.7}
+#pad{display:flex;justify-content:space-between;align-items:flex-end;max-width:800px;margin:10px auto 0;touch-action:none}
+#pad button{touch-action:none;margin:0;border:1px solid var(--bd);background:var(--btn);color:var(--fg);border-radius:14px;font-size:24px;padding:0}
+#pad button.on{background:#4a90e2;color:#fff}
+.dpad{display:grid;grid-template-columns:repeat(3,68px);grid-template-rows:repeat(2,68px);gap:6px;grid-template-areas:". u ." "l d r"}
+.dpad button{width:68px;height:68px}
+#fire{width:104px;height:104px;border-radius:50%!important;font-size:20px!important;background:#e24a4a!important;color:#fff!important}
+#fire.on{background:#a82a2a!important}
+pre{margin:8px 0 0;font-size:13px;text-align:center}
+@media (orientation:landscape) and (max-height:600px){
+  body{padding:6px}h3{margin:0 0 4px}
+  canvas{max-height:calc(100vh - 44px)}
+  #pad{position:fixed;left:8px;right:8px;bottom:8px;max-width:none;margin:0;pointer-events:none}
+  #pad button{pointer-events:auto;opacity:.7}
+  .dpad{grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,56px)}
+  .dpad button{width:56px;height:56px}
+  #fire{width:88px;height:88px}
+  #sb{position:fixed;top:6px;right:8px;margin:0;font-size:12px}
+}
+</style>
+</head>
+<body>
+<h3>联机坦克对战 <small id="st">未连接</small></h3>
+<div class="card" id="setup">
+  名字 <input id="nm" value="玩家" maxlength="12">
+  <div id="modes">
+    <div><b>A. 同浏览器两个标签</b>：一个点「房主」，另一个点「客人」
+      <br><button id="lh">房主</button><button id="lg">客人</button></div>
+    <div><b>B. WebRTC 手动配对</b>（两台设备，无需服务器）
+      <br><button id="rh">我是房主</button><button id="rg">我是客人</button></div>
+  </div>
+  <div id="rtc" hidden>
+    <div id="hostTip" hidden>① 点「生成邀请码」发给客人 ② 把客人返回的应答码贴到下方 ③ 点「确认应答」。</div>
+    <div id="guestTip" hidden>① 把房主的邀请码贴到下方 ② 点「生成应答码」并发回给房主。</div>
+    <button id="go"></button><button id="ok" hidden>确认应答</button><button id="cp">复制本机码</button>
+    <textarea id="o" readonly placeholder="本机生成的码（复制给对方）"></textarea>
+    <textarea id="i" placeholder="粘贴对方的码"></textarea>
+    <div id="msg"></div>
+  </div>
+</div>
+<canvas id="cv" width="800" height="500"></canvas>
+<div id="pad" hidden>
+  <div class="dpad">
+    <button data-k="u" style="grid-area:u">▲</button>
+    <button data-k="l" style="grid-area:l">◀</button>
+    <button data-k="d" style="grid-area:d">▼</button>
+    <button data-k="r" style="grid-area:r">▶</button>
+  </div>
+  <button id="fire" data-k="f">射击</button>
+</div>
+<pre id="sb">▲前进 ▼后退 ◀▶转向，炮口始终朝车头。键盘：WASD/方向键 + 空格。房主页面需保持在前台。</pre>
+
+<script>
+// ==LOGIC-START==
+const W=800,H=500,R=16,SPEED=140,BACK=0.6,TURN=2.6,BSPEED=520,BLIFE=1.5,DMG=25,CD=0.4,RESPAWN=2,MAXP=2,PI=Math.PI;
+const num=(v,d=0)=>Number.isFinite(v)?v:d;
+const c1=v=>Math.max(-1,Math.min(1,num(v)));
+const wrapA=a=>((a+PI)%(2*PI)+2*PI)%(2*PI)-PI;
+
+class Game{
+  constructor(rng=Math.random){this.rng=rng;this.players=new Map();this.bullets=[];this.nextB=1;this.t=0;}
+  randPos(){return{x:50+this.rng()*(W-100),y:50+this.rng()*(H-100)};}
+  addPlayer(id,name){
+    if(typeof id!=='string'||!id||this.players.has(id)||this.players.size>=MAXP)return false;
+    const slot=this.players.size%2===0?{x:90,y:H/2,a:0}:{x:W-90,y:H/2,a:PI};
+    this.players.set(id,{id,name:String(name||id).slice(0,12),x:slot.x,y:slot.y,a:slot.a,hp:100,score:0,dead:0,cd:0,in:{t:0,r:0,f:false}});
+    return true;
+  }
+  removePlayer(id){return this.players.delete(id);}
+  setInput(id,i){
+    const p=this.players.get(id);
+    if(!p||!i||typeof i!=='object')return false;
+    p.in={t:c1(i.t),r:c1(i.r),f:!!i.f};
+    return true;
+  }
+  step(dt){
+    dt=Math.min(Math.max(num(dt),0),0.1);this.t+=dt;
+    const clampP=p=>{p.x=Math.min(W-R,Math.max(R,p.x));p.y=Math.min(H-R,Math.max(R,p.y));};
+    for(const p of this.players.values()){
+      if(p.dead>0){
+        p.dead-=dt;
+        if(p.dead<=0){const s=this.randPos();p.x=s.x;p.y=s.y;p.hp=100;p.dead=0;}
+        continue;
+      }
+      p.a=wrapA(p.a+p.in.r*TURN*dt);
+      const v=p.in.t*(p.in.t>0?SPEED:SPEED*BACK);
+      p.x+=Math.cos(p.a)*v*dt;p.y+=Math.sin(p.a)*v*dt;clampP(p);
+      p.cd=Math.max(0,p.cd-dt);
+      if(p.in.f&&p.cd<=0){
+        p.cd=CD;
+        this.bullets.push({id:this.nextB++,o:p.id,x:p.x+Math.cos(p.a)*(R+4),y:p.y+Math.sin(p.a)*(R+4),vx:Math.cos(p.a)*BSPEED,vy:Math.sin(p.a)*BSPEED,l:BLIFE});
+      }
+    }
+    const L=[...this.players.values()].filter(p=>p.dead<=0);
+    for(let i=0;i<L.length;i++)for(let j=i+1;j<L.length;j++){
+      const a=L[i],b=L[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+      if(d<2*R){
+        let ux=1,uy=0;
+        if(d>=1e-6){ux=dx/d;uy=dy/d;}else d=0;
+        const o=(2*R-d)/2;
+        a.x-=ux*o;a.y-=uy*o;b.x+=ux*o;b.y+=uy*o;clampP(a);clampP(b);
+      }
+    }
+    const keep=[];
+    for(const b of this.bullets){
+      b.x+=b.vx*dt;b.y+=b.vy*dt;b.l-=dt;
+      if(b.l<=0||b.x<0||b.x>W||b.y<0||b.y>H)continue;
+      let hit=false;
+      for(const p of this.players.values()){
+        if(p.id===b.o||p.dead>0)continue;
+        if(Math.hypot(p.x-b.x,p.y-b.y)<=R){
+          p.hp-=DMG;hit=true;
+          if(p.hp<=0){p.hp=0;p.dead=RESPAWN;const s=this.players.get(b.o);if(s)s.score++;}
+          break;
+        }
+      }
+      if(!hit)keep.push(b);
+    }
+    this.bullets=keep;
+  }
+  snapshot(){
+    return{t:+this.t.toFixed(2),
+      p:[...this.players.values()].map(p=>({id:p.id,n:p.name,x:Math.round(p.x),y:Math.round(p.y),a:+p.a.toFixed(2),hp:p.hp,s:p.score,d:p.dead>0})),
+      b:this.bullets.map(b=>({x:Math.round(b.x),y:Math.round(b.y),vx:Math.round(b.vx),vy:Math.round(b.vy)}))};
+  }
+}
+
+function handleMsg(game,d,seen,now){
+  if(!d||typeof d!=='object'||d.type!=='in')return false;
+  const id=d.id;
+  if(typeof id!=='string'||id.length<1||id.length>16)return false;
+  if(!game.players.has(id)&&!game.addPlayer(id,d.name))return false;
+  seen.set(id,now);
+  return game.setInput(id,d.i);
+}
+function reap(game,seen,now,ttl=5000){
+  for(const id of [...game.players.keys()]){
+    if(id==='host')continue;
+    if(now-(seen.get(id)??now)>ttl){game.removePlayer(id);seen.delete(id);}
+  }
+}
+
+class LocalNet{
+  constructor(role){
+    this.role=role;this.onMsg=()=>{};
+    this.ch=new BroadcastChannel('tank-test-v1');
+    this.ch.onmessage=e=>{
+      const m=e.data;if(!m||typeof m!=='object')return;
+      if(role==='host'&&m.to==='host')this.onMsg('guest',m.d);
+      if(role==='guest'&&m.to==='*')this.onMsg('host',m.d);
+    };
+  }
+  send(d){this.ch.postMessage({to:this.role==='host'?'*':'host',d});}
+  close(){this.ch.close();}
+}
+// ==LOGIC-END==
+
+const waitIce=pc=>new Promise(r=>{
+  if(pc.iceGatheringState==='complete')return r();
+  const f=()=>{if(pc.iceGatheringState==='complete'){pc.removeEventListener('icegatheringstatechange',f);r();}};
+  pc.addEventListener('icegatheringstatechange',f);setTimeout(r,3000);
+});
+const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+const enc=o=>btoa(JSON.stringify(o));
+const dec=s=>{
+  s=(s||'').replace(/\s+/g,'');
+  if(!s)throw new Error('输入框是空的，请先粘贴对方发来的码');
+  try{const o=JSON.parse(atob(s));if(!o||!o.sdp)throw 0;return o;}
+  catch(_){throw new Error('码不完整或已损坏，请重新完整复制对方的整段码');}
+};
+class RtcHost{
+  constructor(){this.peers=new Map();this.onMsg=()=>{};}
+  async invite(){
+    const id='c'+Math.random().toString(36).slice(2,7);
+    const pc=new RTCPeerConnection(ICE);
+    const dc=pc.createDataChannel('g',{ordered:false,maxRetransmits:0});
+    dc.onmessage=e=>{try{this.onMsg(id,JSON.parse(e.data));}catch(_){}};
+    dc.onclose=()=>this.peers.delete(id);
+    this.peers.set(id,{pc,dc});
+    await pc.setLocalDescription(await pc.createOffer());await waitIce(pc);
+    return{id,code:enc(pc.localDescription)};
+  }
+  async accept(id,code){
+    const p=this.peers.get(id);if(!p)throw new Error('请先生成邀请码');
+    await p.pc.setRemoteDescription(dec(code));
+  }
+  send(d){const s=JSON.stringify(d);for(const{dc}of this.peers.values())if(dc.readyState==='open')dc.send(s);}
+}
+class RtcGuest{
+  constructor(){this.dc=null;this.onMsg=()=>{};}
+  async join(code){
+    const pc=this.pc=new RTCPeerConnection(ICE);
+    pc.ondatachannel=e=>{this.dc=e.channel;this.dc.onmessage=m=>{try{this.onMsg('host',JSON.parse(m.data));}catch(_){}};};
+    await pc.setRemoteDescription(dec(code));
+    await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);
+    return enc(pc.localDescription);
+  }
+  send(d){if(this.dc&&this.dc.readyState==='open')this.dc.send(JSON.stringify(d));}
+}
+
+// ---------- 应用 ----------
+const $=s=>document.querySelector(s);
+const cv=$('#cv'),ctx=cv.getContext('2d');
+let role=null,net=null,game=null,myId=null,myName='玩家',pend=null;
+let seen=new Map(),lastSnap=null,snapT=0,latch=false;
+const keys={},hold={};
+const KM={w:'u',arrowup:'u',s:'d',arrowdown:'d',a:'l',arrowleft:'l',d:'r',arrowright:'r',' ':'f'};
+const on=k=>!!(keys[k]||hold[k]);
+
+addEventListener('keydown',e=>{
+  if(/INPUT|TEXTAREA/.test(e.target.tagName))return;
+  const k=KM[e.key.toLowerCase()];if(!k)return;
+  e.preventDefault();keys[k]=true;if(k==='f')latch=true;
+});
+addEventListener('keyup',e=>{const k=KM[e.key.toLowerCase()];if(k)keys[k]=false;});
+document.querySelectorAll('#pad button').forEach(b=>{
+  const k=b.dataset.k;
+  b.addEventListener('pointerdown',e=>{
+    e.preventDefault();hold[k]=true;if(k==='f')latch=true;b.classList.add('on');
+    try{b.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  const off=()=>{hold[k]=false;b.classList.remove('on');};
+  b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+});
+
+function start(r,n){
+  if(role)return;
+  role=r;net=n;myName=$('#nm').value||'玩家';
+  myId=r==='host'?'host':'p'+Math.random().toString(36).slice(2,8);
+  if(r==='host'){
+    game=new Game();game.addPlayer('host',myName);
+    net.onMsg=(_,d)=>handleMsg(game,d,seen,performance.now());
+  }else{
+    net.onMsg=(_,d)=>{if(d&&Array.isArray(d.p)){lastSnap=d;snapT=performance.now();}};
+  }
+  $('#modes').hidden=true;$('#pad').hidden=false;
+  $('#st').textContent=r==='host'?'房主（权威判定）':'客人（只发输入）';
+}
+const showRtc=r=>{$('#modes').hidden=true;$('#rtc').hidden=false;
+  $(r==='host'?'#hostTip':'#guestTip').hidden=false;
+  $('#go').textContent=r==='host'?'生成邀请码':'生成应答码';$('#ok').hidden=r!=='host';};
+$('#lh').onclick=()=>start('host',new LocalNet('host'));
+$('#lg').onclick=()=>start('guest',new LocalNet('guest'));
+$('#rh').onclick=()=>{showRtc('host');start('host',new RtcHost());};
+$('#rg').onclick=()=>{showRtc('guest');role='pre';};
+$('#go').onclick=async()=>{
+  try{
+    if(role==='host'){const r=await net.invite();pend=r.id;$('#o').value=r.code;$('#msg').textContent='邀请码已生成，发给客人';}
+    else{const g=new RtcGuest();$('#o').value=await g.join($('#i').value.trim());role=null;start('guest',g);
+      $('#msg').textContent='应答码已生成，发回房主；连上后自动开始';}
+  }catch(e){$('#msg').textContent='出错：'+e.message;}
+};
+$('#cp').onclick=async()=>{
+  const t=$('#o');if(!t.value){$('#msg').textContent='还没有可复制的码';return;}
+  t.focus();t.select();
+  try{await navigator.clipboard.writeText(t.value);}catch(_){document.execCommand('copy');}
+  $('#msg').textContent='已复制（'+t.value.length+' 字符），请完整粘贴给对方';
+};
+$('#ok').onclick=async()=>{
+  try{await net.accept(pend,$('#i').value.trim());$('#msg').textContent='已确认，等待连接…';}
+  catch(e){$('#msg').textContent='出错：'+e.message;}
+};
+
+const myInput=()=>({t:(on('u')?1:0)-(on('d')?1:0),r:(on('r')?1:0)-(on('l')?1:0),f:on('f')||latch});
+const colorOf=id=>id==='host'?'#3b82c4':'#d9534f';
+
+function draw(v,dtb){
+  ctx.fillStyle='#2b2f36';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#666';ctx.lineWidth=2;ctx.strokeRect(1,1,W-2,H-2);
+  ctx.fillStyle='#ffd34d';
+  for(const b of v.b){ctx.beginPath();ctx.arc(b.x+b.vx*dtb,b.y+b.vy*dtb,4,0,7);ctx.fill();}
+  for(const p of v.p){
+    const x=p.dx??p.x,y=p.dy??p.y,a=p.da??p.a;
+    ctx.globalAlpha=p.d?0.25:1;
+    ctx.save();ctx.translate(x,y);ctx.rotate(a);
+    ctx.fillStyle='#222';ctx.fillRect(-R,-R*.85,R*2,R*.3);ctx.fillRect(-R,R*.55,R*2,R*.3);
+    ctx.fillStyle=colorOf(p.id);ctx.fillRect(-R*.9,-R*.6,R*1.8,R*1.2);
+    if(p.id===myId){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(-R*.9,-R*.6,R*1.8,R*1.2);}
+    ctx.fillStyle='#ddd';ctx.fillRect(0,-3,R+10,6);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.arc(0,0,R*.5,0,7);ctx.fill();
+    ctx.restore();
+    ctx.fillStyle='#e33';ctx.fillRect(x-18,y-R-12,36,4);
+    ctx.fillStyle='#4d4';ctx.fillRect(x-18,y-R-12,36*p.hp/100,4);
+    ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(p.n,x,y-R-16);
+    ctx.globalAlpha=1;
+  }
+}
+
+const disp=new Map();let last=performance.now(),accSend=0,accUi=0;
+function frame(now){
+  const dt=(now-last)/1000;last=now;
+  let v=null,dtb=0;
+  if(role==='host'){
+    game.setInput('host',myInput());latch=false;
+    game.step(dt);accSend+=dt;
+    v=game.snapshot();
+    if(accSend>=0.05){accSend=0;reap(game,seen,now);net.send(v);}
+  }else if(role==='guest'){
+    accSend+=dt;
+    if(accSend>=0.05){accSend=0;net.send({type:'in',id:myId,name:myName,i:myInput()});latch=false;}
+    if(lastSnap){
+      v=lastSnap;dtb=Math.min((now-snapT)/1000,0.15);
+      for(const p of v.p){
+        const d=disp.get(p.id)||{x:p.x,y:p.y,a:p.a};
+        d.x+=(p.x-d.x)*0.35;d.y+=(p.y-d.y)*0.35;d.a=wrapA(d.a+wrapA(p.a-d.a)*0.35);
+        disp.set(p.id,d);p.dx=d.x;p.dy=d.y;p.da=d.a;
+      }
+    }
+  }
+  if(v){
+    draw(v,dtb);accUi+=dt;
+    if(!$('#setup').hidden&&v.p.length>=2)$('#setup').hidden=true;
+    if(accUi>0.3){accUi=0;
+      $('#sb').textContent=[...v.p].sort((a,b)=>b.s-a.s).map(p=>`${p.id===myId?'▶ ':''}${p.n}  击杀 ${p.s}  HP ${p.hp}${p.d?' (复活中)':''}`).join('　｜　');}
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
