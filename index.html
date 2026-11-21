@@ -322,7 +322,7 @@ body.touchmode #joystickHint{display:none}
 #wujia-music-card{margin-top:12px;padding:11px 13px;background:linear-gradient(110deg,rgba(92,55,20,.22),rgba(20,26,16,.88));border:1px solid #6b512b}
 #wujia-music-card .wm-title{font-size:13px;letter-spacing:2px;color:#ffcf83;font-weight:700}
 #wujia-music-card .wm-progress{font-size:12px;color:var(--dim);margin-top:5px}
-#wujia-music-btn{position:fixed;right:16px;top:16px;z-index:80;padding:9px 13px;border:1px solid #b17a35;border-radius:8px;background:rgba(31,24,14,.92);color:#ffcf83;font:600 13px inherit;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35);pointer-events:auto}
+#wujia-music-btn{position:fixed;right:16px;top:16px;z-index:80;padding:9px 13px;border:1px solid #b17a35;border-radius:8px;background:rgba(31,24,14,.92);color:#ffcf83;font-family:inherit;font-weight:600;font-size:13px;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35);pointer-events:auto}
 #wujia-music-btn:disabled{opacity:.4;cursor:not-allowed}
 #wujia-music-btn.playing{background:rgba(105,64,20,.96);border-color:#ffbf62;color:#fff}
 @media(max-width:760px){#wujia-music-btn{top:116px;right:12px;padding:7px 10px;font-size:11px}}
@@ -5358,8 +5358,14 @@ DF.WujiaMusic = (() => {
 
     // 战术档案在每局结算时累计本局击杀；包装原方法，避免改变既有资产结算逻辑。
     if (DF.Profile && !DF.Profile._wujiaMusicWrapped) {
+      const load = DF.Profile.load.bind(DF.Profile);
       const addExtraction = DF.Profile.addExtraction.bind(DF.Profile);
       const addDeath = DF.Profile.addDeath.bind(DF.Profile);
+      DF.Profile.load = function () {
+        const result = load(...arguments);
+        refresh(false);
+        return result;
+      };
       DF.Profile.addExtraction = function () {
         const result = addExtraction(...arguments);
         refresh(true);
