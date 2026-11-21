@@ -23,6 +23,8 @@ jobs:
       - name: Build single-page game
         run: |
           node --version
+          for file in src/*.js; do node --check "$file"; done
+          node --check build.js
           node build.js
           test -s index.html
       - name: Commit generated page
