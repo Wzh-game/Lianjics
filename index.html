@@ -3501,9 +3501,10 @@ DF.respawn = function (p) {
   if (p.isLocal) DF.M.onLocalRespawn();
 };
 
-// 地图缓存仅包含场景静态几何；容器和撤离点在两张地图共享。
+// 地图缓存仅包含场景静态几何；容器和撤离点在所有地图共享。
 DF.applyMap = function (id) {
-  id = id === 'outpost' ? 'outpost' : 'base';
+  const validMaps = ['base', 'outpost', 'oilfield', 'urban', 'harbor'];
+  id = validMaps.includes(id) ? id : 'base';
   if (DF.mapId === id) return;
   const old = DF.mapCache[DF.mapId];
   old.objects.forEach(o => DF.scene.remove(o));
