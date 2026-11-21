@@ -1003,7 +1003,44 @@ DF.startSoloExtractLoop = function () {
   }, 100);
 };
 
+/* 每局启动前清理上一局残留的暂停、输入和结算状态。
+   避免移动端触控/键盘状态或旧遮罩让第二局看起来像卡死。 */
+DF.resetRoundInputState = function () {
+  const I = DF.input || (DF.input = {});
+  I.keys = {};
+  I.fire = false; I.ads = false; I.reload = false;
+  I.jumpQueued = false; I.holding = false; I.shotThisFrame = false;
+  I.mdx = 0; I.mdy = 0; I.tdx = 0; I.tdy = 0;
+  I.locked = false;
+  DF.paused = false;
+  DF.chatOpen = false;
+  DF._dropWarned = false;
+  DF.camKick = { pitch: 0, yaw: 0 };
+  DF.vmRecoil = 0;
+  if (DF.touch) {
+    DF.touch.f = 0; DF.touch.s = 0; DF.touch.mag = 0;
+    DF.touch.joyId = null; DF.touch.lookId = null;
+    DF.touch.sprintHeld = false; DF.touch.crouchHeld = false;
+    DF.touch.adsHeld = false; DF.touch.fireHeld = false;
+  }
+  ['pause', 'endscreen', 'respawn', 'scoreboard', 'extractResult', 'chatwrap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+  const lootPanel = document.getElementById('lootPanel');
+  if (lootPanel) lootPanel.classList.add('hidden');
+  document.body.classList.remove('loot-active');
+  if (DF.camera) {
+    DF.camera.fov = 78;
+    DF.camera.updateProjectionMatrix();
+  }
+};
+
 DF.beginPlay = function () {
+  // 重新开局必须从干净状态开始，不依赖刷新页面清理旧状态。
+  if (DF.lootOpen && DF.closeLootUI) DF.closeLootUI();
+  DF.resetRoundInputState();
+  DF.raidResultShown = false;
   DF.startSoloExtractLoop();
   DF._dropWarned = false;
   DF.matchRunning = true;
@@ -1051,10 +1088,19 @@ DF.cleanupNet = function () {
 };
 
 DF.restartMatch = function () {
+  // 结算页与结束页共用重开入口；先清除上一局状态，再创建新战局。
+  DF.resetRoundInputState();
+  DF.matchRunning = false;
+  DF.matchOver = false;
   DF.hide('extractResult');
-  if (DF.mode === 'single') DF.startSolo();
-  else if (DF.mode === 'host') DF.hostStartMatch(true);
-  else DF.toast('等待房主重新开始…');
+  DF.hide('endscreen');
+  if (DF.mode === 'single') {
+    DF.startSolo();
+  } else if (DF.mode === 'host') {
+    DF.hostStartMatch(true);
+  } else {
+    DF.toast('等待房主重新开始…');
+  }
 };
 
 /* ============================================================
