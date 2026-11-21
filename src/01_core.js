@@ -156,7 +156,8 @@ DF.colliders = [];     // {minx,maxx,miny,maxy,minz,maxz}
 DF.obstacleMeta = [];  // 小地图用
 
 DF.initWorld = function (scene, mapId) {
-  mapId = mapId === 'outpost' ? 'outpost' : 'base';
+  const validMaps = ['base', 'outpost', 'oilfield', 'urban', 'harbor'];
+  mapId = validMaps.includes(mapId) ? mapId : 'base';
   DF.buildTextures();
   DF.worldMeshes = []; DF.colliders = []; DF.obstacleMeta = [];
   CFG.mapHalf = 88;
@@ -180,8 +181,15 @@ DF.initWorld = function (scene, mapId) {
   sky.frustumCulled = false;
   scene.add(sky);
 
-  scene.fog = new T.Fog(new T.Color('#a8a493'), 55, 245);
-  scene.background = new T.Color('#a8a493');
+  const atmosphere = {
+    base:     { fog: '#a8a493', ground: 0xa8a089 },
+    outpost:  { fog: '#a8a493', ground: 0xa8a089 },
+    oilfield: { fog: '#c4a477', ground: 0xb69a69 },
+    urban:    { fog: '#89939a', ground: 0x777b78 },
+    harbor:   { fog: '#91aeb7', ground: 0x82989a }
+  }[mapId];
+  scene.fog = new T.Fog(new T.Color(atmosphere.fog), 55, 245);
+  scene.background = new T.Color(atmosphere.fog);
 
   // ---- 光照 ----
   const hemi = new T.HemisphereLight(0xcfd8dc, 0x4a4436, 0.62);
@@ -198,7 +206,7 @@ DF.initWorld = function (scene, mapId) {
   DF.sun = sun;
 
   // ---- 地面 ----
-  const gMat = new T.MeshStandardMaterial({ map: DF.TEX.ground, roughness: 0.97, metalness: 0.02, color: 0xa8a089 });
+  const gMat = new T.MeshStandardMaterial({ map: DF.TEX.ground, roughness: 0.97, metalness: 0.02, color: atmosphere.ground });
   const ground = new T.Mesh(new T.PlaneGeometry(400, 400), gMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -382,7 +390,7 @@ DF.initWorld = function (scene, mapId) {
     ladder.castShadow = true;
   })();
 
-  } else {
+  } else if (mapId === 'outpost') {
     // 边境前哨：错落的断墙、货柜与沙袋形成开阔的多条交战路线。
     // 不覆盖搜刮容器及撤离点，确保原有搜打撤玩法在两张图均可使用。
     const protectedPoints = (DF.containers || []).map(c => [c.x, c.z])
@@ -408,6 +416,95 @@ DF.initWorld = function (scene, mapId) {
       cover(x, z, rot ? 3.2 : 8, 2.9, rot ? 8 : 3.2, M.contB);
     for (const [x,z] of [[-48,-18],[-24,-55],[7,-53],[29,-18],[50,15],[-46,58],[-7,66],[48,63]])
       cover(x, z, 3, 2, 3, M.wood);
+  } else if (mapId === 'oilfield') {
+    // 沙漠油田：储油罐、抽油机、管线和采油厂房，保持撤离区周边畅通。
+    const tankMat = new T.MeshStandardMaterial({ color: 0x9b8055, metalness: 0.62, roughness: 0.48 });
+    const rustMat = new T.MeshStandardMaterial({ color: 0x68452d, metalness: 0.58, roughness: 0.72 });
+    const pipeMat = new T.MeshStandardMaterial({ color: 0x554b3d, metalness: 0.72, roughness: 0.42 });
+    function tank(x, z, r, h) {
+      const body = new T.Mesh(new T.CylinderGeometry(r, r, h, 20), tankMat);
+      body.position.set(x, h / 2, z); body.castShadow = true; body.receiveShadow = true;
+      scene.add(body); DF.worldMeshes.push(body);
+      box(x, 0, z, r * 1.8, 0.65, r * 1.8, M.wallDark);
+      const roof = new T.Mesh(new T.CylinderGeometry(r * 1.02, r * 1.02, 0.22, 20), rustMat);
+      roof.position.set(x, h + 0.08, z); scene.add(roof);
+    }
+    [[-48,-42,8,10],[-28,-48,5,8],[42,-42,7,9],[52,18,6,8],[-48,38,6,7]].forEach(v=>tank(...v));
+    // 采油机：底座、支架、横梁和配重。
+    function pumpjack(x,z) {
+      box(x,0,z,8,1.1,5,M.wallDark);
+      box(x,1.1,z,0.9,5.2,0.9,rustMat);
+      box(x,5.5,z,8.5,0.55,1.0,rustMat);
+      box(x+3.1,3.6,z,1.6,2.2,1.6,M.metal);
+      box(x-3.2,4.5,z,1.0,2.8,1.0,M.metal);
+      const arm = new T.Mesh(new T.CylinderGeometry(0.16,0.16,7.5,10), rustMat);
+      arm.position.set(x,6.0,z); arm.rotation.z=Math.PI/2; scene.add(arm);
+    }
+    pumpjack(-16,-8); pumpjack(28,4); pumpjack(-42,54);
+    // 炼油厂低矮设备、输油管线与维修棚。
+    box(8,0,-48,18,6,12,M.wallDark);
+    box(8,6,-48,19,0.45,13,M.metal,{collide:false});
+    for (const z of [-25,-20,34,42]) {
+      box(0,0,z,42,0.8,0.9,pipeMat);
+      box(-18,0,z+2,0.8,2.2,0.8,M.metal);
+      box(18,0,z+2,0.8,2.2,0.8,M.metal);
+    }
+    [[-62,-4],[62,-18],[-12,58],[36,48]].forEach(([x,z])=>box(x,0,z,7,2.0,2.2,M.sand));
+  } else if (mapId === 'urban') {
+    // 废弃城区：破损楼体、街区外墙、公交站与路障构成多层巷战空间。
+    const concrete = new T.MeshStandardMaterial({ color: 0x777d7d, roughness: 0.96 });
+    const glass = new T.MeshStandardMaterial({ color: 0x263b43, metalness: 0.55, roughness: 0.28 });
+    function ruin(x,z,w,d,h,openSide) {
+      box(x,0,z-d/2,w,h,0.9,concrete);
+      box(x-w/2,0,z,0.9,h,d,concrete);
+      box(x+w/2,0,z,0.9,h,d,concrete);
+      if (!openSide) box(x,0,z+d/2,w,h,0.9,concrete);
+      box(x,h,z,w+0.5,0.35,d+0.5,M.wallDark,{collide:false});
+      for(let i=0;i<Math.floor(w/5);i++){
+        const win=new T.Mesh(new T.PlaneGeometry(2.2,1.5),glass);
+        win.position.set(x-w/2+3+i*5,3.7,z-d/2+0.48); scene.add(win);
+      }
+    }
+    ruin(-48,-42,25,20,7,true);
+    ruin(46,-42,24,20,8,true);
+    ruin(-48,42,22,18,6,false);
+    ruin(42,38,26,20,7,true);
+    // 破损街墙与中央路口掩体，保留从地图中央通向三处撤离点的通道。
+    for(const [x,z,w,d,h] of [[-18,-54,12,1,2.8],[10,-56,15,1,2.4],[ -58,0,1,18,2.8],[58,-4,1,20,2.6],[-22,34,13,1,2.5],[18,48,12,1,2.8],[-4,-18,1,12,2.2],[28,8,1,14,2.6]])
+      box(x,0,z,w,h,d,M.wallDark);
+    // 翻倒车辆与混凝土路障。
+    [[-8,12],[8,16],[30,-16],[-34,8],[48,10],[-54,20]].forEach(([x,z],i)=>{
+      box(x,0,z, i%2?5.8:3.2,1.35,i%2?2.5:5.8,i%2?M.metal:M.wall);
+      box(x,1.2,z,2.8,0.65,2.0,glass,{collide:false});
+    });
+    for(const [x,z] of [[-5,48],[8,-38],[62,48],[-64,-18]]) box(x,0,z,5,1.1,1.2,M.sand);
+  } else if (mapId === 'harbor') {
+    // 临海港口：彩色货柜、装卸仓库、岸边吊机与成排系缆设施。
+    const craneMat = new T.MeshStandardMaterial({ color: 0xc18a3c, metalness: 0.68, roughness: 0.42 });
+    const sea = new T.Mesh(new T.PlaneGeometry(400,400), new T.MeshStandardMaterial({ color: 0x315f70, roughness: 0.34, metalness: 0.18 }));
+    sea.rotation.x=-Math.PI/2; sea.position.set(0,-0.12,0); scene.add(sea);
+    // 港区货柜：不同高度与朝向形成多条射击走廊。
+    const cm=[M.contA,M.contB,M.contC];
+    [[-52,-34,0,0],[-38,-34,1,1],[-18,-28,0,0],[18,-34,1,0],[38,-30,0,1],[56,-8,1,0],[-54,18,1,0],[-30,30,0,1],[0,34,1,0],[28,28,0,0],[52,44,1,0]].forEach(([x,z,rot,stack],i)=>{
+      const w=rot?3.2:8,d=rot?8:3.2;
+      box(x,0,z,w,2.9,d,cm[i%3]);
+      if(stack) box(x,2.9,z,w,2.9,d,cm[(i+1)%3]);
+    });
+    // 装卸仓库和吊机门架。
+    box(-12,0,-58,26,7,12,M.wall);
+    box(-12,7,-58,27,0.45,13,M.metal,{collide:false});
+    for(const x of [-62,62]){
+      box(x,0,-8,1.4,15,1.4,craneMat);
+      box(x,14,-8,1.4,1.4,38,craneMat);
+      box(x,0,10,1.4,15,1.4,craneMat);
+      box(x,7,-8,1.0,0.8,28,M.metal,{collide:false});
+    }
+    for(const x of [-70,-48,48,70]) box(x,0,54,3,1.0,5,M.wallDark);
+    // 岸边地面标线。
+    for(let z=-72;z<=68;z+=12){
+      const line=new T.Mesh(new T.PlaneGeometry(0.16,7),new T.MeshBasicMaterial({color:0xd6c38a}));
+      line.rotation.x=-Math.PI/2; line.position.set(76,0.025,z); scene.add(line);
+    }
   }
 
   // ===== 远处山体剪影（装饰）=====
@@ -435,12 +532,14 @@ DF.initWorld = function (scene, mapId) {
   }
 
   // 出生点
-  DF.spawns = [
-    { x: 0, z: 0 }, { x: -48, z: -40 }, { x: 44, z: -34 }, { x: 0, z: 70 },
-    { x: -70, z: 0 }, { x: 70, z: 0 }, { x: 0, z: -70 }, { x: -60, z: 60 },
-    { x: 60, z: -60 }, { x: 62, z: 40 }, { x: -62, z: -30 }, { x: 30, z: 40 },
-    { x: -30, z: 70 }, { x: 74, z: -40 }, { x: -74, z: -60 }
-  ];
+  const spawnSets = {
+    base: [{x:0,z:0},{x:-48,z:-40},{x:44,z:-34},{x:0,z:70},{x:-70,z:0},{x:70,z:0},{x:0,z:-70},{x:-60,z:60},{x:60,z:-60},{x:62,z:40},{x:-62,z:-30},{x:30,z:40},{x:-30,z:70},{x:74,z:-40},{x:-74,z:-60}],
+    outpost: [{x:0,z:0},{x:-60,z:-34},{x:58,z:-34},{x:-58,z:18},{x:58,z:20},{x:-28,z:-58},{x:28,z:-58},{x:-28,z:58},{x:28,z:58},{x:0,z:44},{x:0,z:-30},{x:-72,z:0},{x:72,z:0},{x:-42,z:0},{x:42,z:0}],
+    oilfield: [{x:0,z:0},{x:-16,z:20},{x:18,z:20},{x:-66,z:-20},{x:66,z:-28},{x:-20,z:-62},{x:24,z:-62},{x:-60,z:56},{x:42,z:52},{x:0,z:52},{x:0,z:-10},{x:-34,z:10},{x:36,z:12},{x:-68,z:0},{x:68,z:0}],
+    urban: [{x:0,z:0},{x:-18,z:-30},{x:18,z:-30},{x:-66,z:-10},{x:66,z:-10},{x:-18,z:58},{x:18,z:58},{x:-30,z:-62},{x:30,z:-62},{x:-60,z:24},{x:60,z:24},{x:-8,z:28},{x:8,z:28},{x:-38,z:0},{x:38,z:0}],
+    harbor: [{x:0,z:0},{x:-8,z:-12},{x:12,z:-12},{x:-68,z:26},{x:68,z:26},{x:-20,z:58},{x:20,z:58},{x:-68,z:-48},{x:68,z:-48},{x:-4,z:48},{x:4,z:48},{x:-28,z:4},{x:28,z:4},{x:-60,z:4},{x:60,z:4}]
+  };
+  DF.spawns = spawnSets[mapId] || spawnSets.base;
 
   DF.worldMeshes.forEach(m => { m.updateMatrixWorld(true); });
 };
