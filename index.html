@@ -3555,6 +3555,10 @@ DF.resetRoundInputState = function () {
     DF.touch.sprintHeld = false; DF.touch.crouchHeld = false;
     DF.touch.adsHeld = false; DF.touch.fireHeld = false;
   }
+  ['t-fire', 't-ads', 't-crouch', 't-sprint'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
   ['pause', 'endscreen', 'respawn', 'scoreboard', 'extractResult', 'chatwrap'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
