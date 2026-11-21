@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>三角洲行动 · 网页联机版 | WebRTC 房主权威</title>
+<style>
+:root{
+  --olive:#232b1c; --olive2:#2f3a24; --panel:rgba(14,18,12,.92);
+  --line:#4a5a38; --accent:#ff8c1a; --accent2:#ffb347; --txt:#e8ecdd; --dim:#9aa78a;
+  --red:#ff4d4d; --green:#7dd069;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0d07;color:var(--txt);
+  font-family:"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;user-select:none}
+#gl{position:fixed;inset:0}
+#gl canvas{display:block}
+.hidden{display:none!important}
+/* ============ 通用界面 ============ */
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:28;
+  background:radial-gradient(1200px 700px at 50% 30%,rgba(47,58,36,.55),rgba(5,7,4,.88) 70%),
+             repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 2px,transparent 2px 4px);}
+.panel{background:var(--panel);border:1px solid var(--line);padding:26px 30px;max-width:860px;width:92%;
+  max-height:92vh;overflow-y:auto;position:relative;
+  clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px));
+  box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.panel::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),transparent 60%)}
+h1.logo{font-size:52px;letter-spacing:6px;font-weight:900;color:#fff;line-height:1.05;
+  text-shadow:0 0 24px rgba(255,140,26,.35)}
+h1.logo .en{display:block;font-size:15px;letter-spacing:8px;color:var(--accent);font-weight:700;margin-top:6px}
+.sub{color:var(--dim);font-size:13px;margin:10px 0 4px;letter-spacing:1px}
+.badge{display:inline-block;background:var(--olive2);border:1px solid var(--line);color:var(--accent2);
+  font-size:11px;padding:2px 9px;margin:2px 4px 2px 0;letter-spacing:1px}
+.btn{display:inline-block;background:linear-gradient(180deg,#3a4a2c,#2a3620);border:1px solid var(--line);
+  color:var(--txt);padding:12px 22px;font-size:16px;cursor:pointer;letter-spacing:2px;margin:5px 4px;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+  transition:all .15s;font-family:inherit}
+.btn:hover:not(:disabled){background:linear-gradient(180deg,#4d6138,#36482a);border-color:var(--accent);color:#fff}
+.btn.primary{background:linear-gradient(180deg,#c96a12,#9c520d);border-color:#ffb347;color:#fff;font-weight:700}
+.btn.primary:hover:not(:disabled){background:linear-gradient(180deg,#e07d1c,#b35f10)}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.btn.small{padding:7px 14px;font-size:13px}
+input[type=text],textarea,select{background:#0d110a;border:1px solid var(--line);color:var(--txt);
+  padding:9px 11px;font-size:14px;font-family:inherit;outline:none}
+input[type=text]:focus,textarea:focus{border-color:var(--accent)}
+textarea{width:100%;height:64px;font-family:Consolas,monospace;font-size:11px;resize:vertical;word-break:break-all}
+label.lab{display:block;font-size:12px;color:var(--dim);letter-spacing:1px;margin:12px 0 5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.modegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.modecard{background:var(--olive);border:1px solid var(--line);padding:16px 14px;cursor:pointer;text-align:center;transition:all .15s}
+.modecard:hover{border-color:var(--accent);background:var(--olive2);transform:translateY(-2px)}
+.modecard .ic{font-size:30px}
+.modecard .t{font-size:17px;font-weight:700;margin:6px 0 3px;letter-spacing:1px}
+.modecard .d{font-size:12px;color:var(--dim);line-height:1.5}
+.ctrls{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 14px;font-size:12.5px;color:var(--dim);margin-top:8px}
+.ctrls b{color:var(--txt);background:#141a10;border:1px solid var(--line);padding:1px 7px;margin-right:5px;font-weight:600}
+.note{font-size:12px;color:var(--dim);line-height:1.7;background:rgba(255,140,26,.06);
+  border-left:3px solid var(--accent);padding:8px 12px;margin-top:12px}
+.slot{background:#10150c;border:1px solid var(--line);padding:14px;margin:10px 0}
+.slot h3{font-size:14px;letter-spacing:1px;color:var(--accent2)}
+.slot .st{font-size:12px;color:var(--dim)}
+.slot .st.ok{color:var(--green)}
+.plist{list-style:none;margin:8px 0}
+.plist li{padding:6px 10px;background:#10150c;border:1px solid #2c3623;margin:4px 0;font-size:14px;display:flex;justify-content:space-between}
+.plist .hosttag{color:var(--accent);font-size:11px;border:1px solid var(--accent);padding:0 6px;margin-left:8px}
+h2.ptitle{font-size:24px;letter-spacing:3px;margin-bottom:4px}
+h2.ptitle span{color:var(--accent)}
+/* ============ HUD ============ */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:20}
+#minimap{position:absolute;top:14px;left:14px;width:172px;height:172px;border:1px solid var(--line);
+  background:rgba(10,14,8,.78);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+#compass{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:420px;height:26px}
+#killfeed{position:absolute;top:48px;right:16px;text-align:right;font-size:13px}
+#killfeed div{background:rgba(10,14,8,.72);border-right:3px solid var(--accent);padding:4px 10px;margin:3px 0;display:inline-block}
+#killfeed .hs{color:var(--accent2)}
+#score-mini{position:absolute;top:150px;right:16px;font-size:12px;background:rgba(10,14,8,.6);padding:6px 10px;border:1px solid #2c3623;min-width:150px}
+#score-mini div{display:flex;justify-content:space-between;gap:14px}
+#score-mini .me{color:var(--accent2)}
+#crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px}
+#crosshair i{position:absolute;background:rgba(255,255,255,.92);box-shadow:0 0 3px #000}
+#crosshair .t{left:50%;top:0;width:2px;height:9px;transform:translateX(-50%)}
+#crosshair .b{left:50%;bottom:0;width:2px;height:9px;transform:translateX(-50%)}
+#crosshair .l{top:50%;left:0;height:2px;width:9px;transform:translateY(-50%)}
+#crosshair .r{top:50%;right:0;height:2px;width:9px;transform:translateY(-50%)}
+#crosshair .dot{left:50%;top:50%;width:2px;height:2px;transform:translate(-50%,-50%)}
+#hitmarker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);font-size:22px;color:#fff;
+  opacity:0;text-shadow:0 0 4px #000;transition:opacity .1s}
+#hitmarker.kill{color:var(--red);font-size:28px}
+#healthwrap{position:absolute;left:22px;bottom:22px;width:300px}
+#hpbar-bg{height:14px;background:rgba(0,0,0,.55);border:1px solid var(--line);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+#hpbar{height:100%;width:100%;background:linear-gradient(90deg,#5da24a,#8fd06a);transition:width .18s}
+#hpbar.low{background:linear-gradient(90deg,#c0392b,#e74c3c)}
+#hpnum{font-size:30px;font-weight:900;text-shadow:0 2px 6px #000;margin-top:2px}
+#hpnum small{font-size:12px;color:var(--dim);font-weight:400;letter-spacing:2px}
+#ammowrap{position:absolute;right:26px;bottom:20px;text-align:right}
+#ammo{font-size:44px;font-weight:900;text-shadow:0 2px 8px #000;line-height:1}
+#reserve{font-size:18px;color:var(--dim)}
+#weapon{font-size:13px;letter-spacing:3px;color:var(--accent2)}
+#reloadhint{font-size:13px;color:var(--accent2);height:18px;letter-spacing:2px}
+#matchinfo{position:absolute;top:44px;left:50%;transform:translateX(-50%);font-size:13px;color:var(--dim);letter-spacing:2px;text-align:center}
+#matchinfo b{color:var(--txt);font-size:16px}
+#chatlog{position:absolute;left:22px;bottom:96px;font-size:13px;max-width:420px}
+#chatlog div{background:rgba(10,14,8,.55);padding:2px 8px;margin:2px 0;width:fit-content}
+#chatlog .who{color:var(--accent2)}
+#chatwrap{position:absolute;left:22px;bottom:64px;pointer-events:auto}
+#chatinput{width:320px;background:rgba(10,14,8,.85)}
+#vignette{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .15s;
+  background:radial-gradient(ellipse at center,transparent 52%,rgba(200,20,10,.55) 100%)}
+#dmgdir{position:absolute;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px;opacity:0;pointer-events:none}
+#dmgdir::before{content:"";position:absolute;left:50%;top:6px;width:34px;height:14px;margin-left:-17px;
+  background:linear-gradient(180deg,rgba(255,40,20,.9),transparent);clip-path:polygon(50% 0,100% 100%,0 100%)}
+#respawn{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;
+  background:radial-gradient(ellipse at center,rgba(60,5,5,.25),rgba(10,2,2,.72));pointer-events:none}
+#respawn .big{font-size:44px;font-weight:900;letter-spacing:6px;color:#ff6b5e;text-shadow:0 0 20px rgba(255,0,0,.4)}
+#respawn .cd{font-size:20px;margin-top:8px;color:var(--txt)}
+#respawn .by{font-size:14px;color:var(--dim);margin-top:4px}
+#scoreboard{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:35;background:var(--panel);
+  border:1px solid var(--line);padding:20px 26px;min-width:420px;pointer-events:none}
+#scoreboard table{width:100%;border-collapse:collapse;font-size:14px}
+#scoreboard th{color:var(--dim);text-align:left;padding:4px 8px;border-bottom:1px solid var(--line);letter-spacing:1px}
+#scoreboard td{padding:5px 8px;border-bottom:1px solid #222b1a}
+#scoreboard tr.me td{color:var(--accent2)}
+#toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(14,18,12,.92);
+  border:1px solid var(--accent);color:var(--txt);padding:9px 20px;font-size:14px;z-index:60;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.show{opacity:1}
+#pause .panel,#endscreen .panel{text-align:center;max-width:560px}
+#endscreen .winner{font-size:38px;font-weight:900;letter-spacing:3px;color:var(--accent2);margin:8px 0}
+#endscreen table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+#endscreen th,#endscreen td{padding:6px 8px;border-bottom:1px solid #2c3623;text-align:left}
+#endscreen th{color:var(--dim)}
+/* ============ 搜打撤 UI ============ */
+#raidbar{position:absolute;top:44px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;
+  font-size:12px;color:var(--dim);letter-spacing:1px;z-index:2;pointer-events:none;white-space:nowrap}
+#raidbar .chip{background:rgba(10,14,8,.72);border:1px solid var(--line);padding:3px 9px;white-space:nowrap}
+#raidbar .chip b{color:var(--txt)}
+#raidbar .chip.hot{border-color:var(--accent);color:var(--accent2)}
+#lootHint{position:absolute;left:50%;top:calc(50% + 62px);transform:translateX(-50%);font-size:14px;
+  background:rgba(10,14,8,.82);border:1px solid var(--accent);padding:7px 16px;letter-spacing:1px;
+  opacity:0;transition:opacity .15s;pointer-events:none;white-space:nowrap}
+#lootHint.on{opacity:1}
+#lootHint b{color:var(--accent2);background:#141a10;border:1px solid var(--line);padding:1px 7px;margin-right:6px}
+#searchbar{position:absolute;left:50%;top:calc(50% + 96px);transform:translateX(-50%);width:260px;height:8px;
+  background:rgba(0,0,0,.6);border:1px solid var(--line);opacity:0;transition:opacity .12s;pointer-events:none}
+#searchbar.on{opacity:1}
+#searchbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff8c1a,#ffd27a)}
+#extractPanel{position:absolute;left:50%;top:calc(50% - 150px);transform:translateX(-50%);width:320px;
+  text-align:center;opacity:0;transition:opacity .2s;pointer-events:none}
+#extractPanel.on{opacity:1}
+#extractPanel .ttl{font-size:15px;letter-spacing:3px;color:#7dd069;margin-bottom:6px;text-shadow:0 2px 8px #000}
+#extractPanel .bar{height:12px;background:rgba(0,0,0,.65);border:1px solid #4a7a45}
+#extractPanel .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5da24a,#9be07a);transition:width .1s}
+#extractPanel .tip{font-size:11.5px;color:#ffb347;margin-top:5px;letter-spacing:1px}
+
+/* 拾取 / 背包面板 */
+#lootPanel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:32;
+  width:min(780px,94vw);max-height:88vh;overflow-y:auto;
+  background:#0e120c;border:1px solid #4a5a38;padding:20px 22px;
+  box-shadow:0 24px 70px rgba(0,0,0,.75)}
+#lootPanel::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),transparent 65%)}
+#lootPanel h3{font-size:17px;letter-spacing:2px;margin-bottom:3px}
+#lootPanel h3 span{color:var(--accent2)}
+#lootPanel .sub2{font-size:12px;color:var(--dim);margin-bottom:14px}
+.lootcols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.lootcol h4{font-size:12.5px;color:var(--dim);letter-spacing:2px;margin:0 0 7px;
+  border-bottom:1px solid #2c3623;padding-bottom:5px;display:flex;justify-content:space-between}
+.lootitem{display:flex;align-items:center;gap:9px;background:#10150c;border:1px solid #2c3623;
+  padding:7px 9px;margin-bottom:5px;font-size:13px}
+.lootitem .dot{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+.lootitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lootitem .pr{color:var(--accent2);font-size:12px}
+.lootitem button,.lootitem .act{background:#2a3620;border:1px solid var(--line);color:var(--txt);
+  font-size:11px;padding:3px 8px;cursor:pointer;font-family:inherit}
+.lootitem button:hover{background:#3d4f2c;border-color:var(--accent)}
+.lootitem.taken{opacity:.32}
+.lootitem.taken .pr{text-decoration:line-through}
+.baggrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:12px}
+.bagslot{aspect-ratio:1;background:#0b0f08;border:1px dashed #2c3623;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-size:10px;color:var(--dim);text-align:center;padding:2px;cursor:pointer}
+.bagslot.filled{border-style:solid;border-color:var(--line);background:#141a10}
+.bagslot.filled:hover{border-color:var(--accent);background:#1b2415}
+.bagslot .sq{width:12px;height:12px;border-radius:2px;margin-bottom:3px}
+.bagslot .nl{font-size:9.5px;line-height:1.15;color:var(--txt);word-break:break-all}
+.bagslot .vl{font-size:9px;color:var(--accent2)}
+.safegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:8px}
+.safeslot{background:rgba(255,140,26,.07);border:1px solid #6a4a20;min-height:46px;display:flex;
+  align-items:center;gap:6px;font-size:11px;padding:4px 7px}
+.safeslot .sq{width:10px;height:10px;border-radius:2px;flex:0 0 auto}
+#lootFoot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;
+  border-top:1px solid #2c3623;padding-top:12px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;gap:8px}
+#lootFoot b{color:var(--accent2)}
+/* 撤离 / 阵亡 结算 */
+#extractResult{position:fixed;inset:0;z-index:34;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,rgba(20,60,20,.32),rgba(4,8,4,.82))}
+#extractResult.dead{background:radial-gradient(ellipse at center,rgba(60,10,10,.32),rgba(8,4,4,.85))}
+#extractResult .card{background:#0e120c;border:1px solid #4a5a38;padding:26px 34px;text-align:center;
+  max-width:min(540px,92vw);box-shadow:0 24px 70px rgba(0,0,0,.8)}
+#extractResult .big{font-size:34px;font-weight:900;letter-spacing:4px;margin:4px 0 10px}
+#extractResult.live .big{color:#8fe07a}
+#extractResult.dead .big{color:#ff6b5e}
+#extractResult .gain{font-size:30px;font-weight:900;color:var(--accent2);margin:8px 0}
+#extractResult .gain.lost{color:#c05a4a;text-decoration:line-through}
+#extractResult .rows{text-align:left;font-size:13px;color:var(--dim);line-height:1.95;margin:12px 0;
+  border-top:1px solid #2c3623;border-bottom:1px solid #2c3623;padding:10px 0}
+#extractResult .rows div{display:flex;justify-content:space-between;gap:20px}
+#extractResult .rows b{color:var(--txt)}
+.profbox{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.profbox div{background:#10150c;border:1px solid #2c3623;padding:9px 6px;text-align:center}
+.profbox .k{font-size:10.5px;color:var(--dim);letter-spacing:1px;margin-bottom:2px}
+.profbox .v{font-size:17px;font-weight:700;color:var(--accent2)}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--dim);margin-top:8px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+/* ============ 触屏控制 ============ */
+#touchui{position:fixed;inset:0;z-index:25;pointer-events:none;touch-action:none;-webkit-user-select:none;user-select:none}
+#joyzone{position:absolute;left:0;bottom:0;width:46%;height:78%;pointer-events:auto;touch-action:none}
+#joy{position:absolute;left:30px;bottom:38px;width:132px;height:132px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.20);background:radial-gradient(circle,rgba(30,38,24,.34),rgba(12,16,10,.22));
+  pointer-events:none;opacity:.55;transition:opacity .18s}
+#joy.active{opacity:-webkit-calc(1);opacity:1;border-color:rgba(255,179,71,.5)}
+#joyring{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;
+  border:1px dashed rgba(255,255,255,.20)}
+#joyknob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.62),rgba(210,220,200,.26));
+  border:2px solid rgba(255,255,255,.55);box-shadow:0 4px 16px rgba(0,0,0,.45)}
+#joglabel{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);font-size:10px;
+  color:rgba(255,255,255,.45);letter-spacing:3px;white-space:nowrap}
+#sprintbar{position:absolute;left:34px;bottom:184px;width:126px;height:4px;background:rgba(255,255,255,.14);
+  border-radius:2px;overflow:hidden;opacity:0;transition:opacity .2s}
+#sprintbar.on{opacity:1}
+#sprintbar i{display:block;height:100%;width:0;background:var(--accent);border-radius:2px;transition:width .08s}
+.tbtn{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.30);
+  background:rgba(18,24,14,.40);color:#fff;display:flex;align-items:center;justify-content:center;
+  pointer-events:auto;touch-action:none;font-size:13px;letter-spacing:1px;font-family:inherit;
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  box-shadow:0 3px 12px rgba(0,0,0,.35);transition:transform .07s,background .1s,border-color .1s}
+.tbtn.sm{font-size:12px}
+.tbtn.active{background:rgba(255,140,26,.55);border-color:var(--accent);transform:scale(.93)}
+.tbtn.fire{right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:100px;height:100px;font-size:17px;
+  font-weight:700;letter-spacing:2px;border-color:rgba(255,140,26,.8);background:rgba(255,140,26,.22)}
+.tbtn.fire.active{background:rgba(255,140,26,.66);transform:scale(.96)}
+#t-ads{right:132px;bottom:calc(24px + env(safe-area-inset-bottom));width:64px;height:64px}
+#t-jump{right:130px;bottom:calc(104px + env(safe-area-inset-bottom));width:60px;height:60px}
+#t-reload{right:40px;bottom:calc(140px + env(safe-area-inset-bottom));width:58px;height:58px}
+#t-crouch{right:200px;bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px}
+#t-sprint{right:206px;bottom:calc(14px + env(safe-area-inset-bottom));width:56px;height:56px}
+#t-menu{right:14px;top:14px;bottom:auto;width:42px;height:42px;border-radius:10px;font-size:18px;line-height:1}
+#t-bag{right:14px;top:64px;bottom:auto;width:56px;height:46px;border-radius:10px}
+#t-interact{left:50%;bottom:20%;transform:translateX(-50%);width:132px;height:48px;border-radius:12px;
+  background:rgba(30,38,20,.92);border-color:var(--accent);font-weight:700;color:#fff;white-space:nowrap}
+#t-interact.active{transform:translateX(-50%) scale(.96)}
+#t-interact:disabled{opacity:.7}
+body.loot-active #touchui{visibility:hidden}
+#touchhint{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:12.5px;
+  color:rgba(255,255,255,.78);background:rgba(8,12,6,.62);border:1px solid rgba(255,179,71,.35);
+  padding:7px 15px;border-radius:20px;white-space:nowrap;opacity:0;transition:opacity .5s;pointer-events:none}
+#touchhint.on{opacity:1}
+#rotatehint{position:fixed;inset:0;z-index:70;background:#0a0d07;display:none;
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}
+#rotatehint .ic{font-size:44px;transform:rotate(-90deg);color:var(--accent);margin-bottom:14px;
+  animation:tilt 2.4s ease-in-out infinite}
+@keyframes tilt{0%,100%{transform:rotate(-90deg)}50%{transform:rotate(0deg)}}
+#rotatehint .t1{font-size:18px;letter-spacing:3px;margin-bottom:6px}
+#rotatehint .t2{font-size:13px;color:var(--dim);line-height:1.8}
+#rotatehint .btn{margin-top:22px}
+@media (orientation:portrait){
+  body.touchmode #rotatehint{display:flex}
+}
+@media (max-height:430px){
+  #joy{width:106px;height:106px;left:22px;bottom:22px}
+  .tbtn.fire{width:88px;height:88px;right:20px;bottom:28px}
+  #t-jump{right:32px;bottom:128px;width:56px;height:56px}
+  #t-reload{right:126px;bottom:126px;width:54px;height:54px}
+  #t-ads{right:126px;bottom:40px;width:60px;height:60px}
+  #t-crouch{right:196px;bottom:88px;width:52px;height:52px}
+  #t-sprint{right:200px;bottom:20px;width:52px;height:52px}
+  #sprintbar{left:26px;bottom:140px;width:100px}
+}
+@media (max-width:760px){
+  h1.logo{font-size:34px}.modegrid{grid-template-columns:1fr}.ctrls{grid-template-columns:repeat(2,1fr)}
+  #minimap{width:110px;height:110px}#compass{width:240px}#healthwrap{width:180px}#ammo{font-size:30px}
+  #score-mini{display:none}
+}
+body.touchmode #minimap{width:104px;height:104px;top:10px;left:10px}
+body.touchmode #compass{width:250px;top:8px}
+body.touchmode #matchinfo{top:36px;font-size:11px}
+body.touchmode #killfeed{top:64px;right:10px;font-size:11px;max-width:40vw}
+body.touchmode #score-mini{display:none}
+/* 手机端血条移到小地图下方，避免与摇杆重叠 */
+body.touchmode #healthwrap{width:132px;left:12px;top:122px;bottom:auto}
+body.touchmode #hpbar-bg{height:9px}
+body.touchmode #hpnum{font-size:17px;margin-top:1px}
+body.touchmode #hpnum small{font-size:9px;letter-spacing:1px}
+body.touchmode #joglabel{display:none}
+body.touchmode #sprintbar{left:32px;bottom:196px;width:118px}
+body.touchmode #ammowrap{right:auto;left:50%;transform:translateX(-50%);bottom:calc(6px + env(safe-area-inset-bottom));text-align:center}
+body.touchmode #ammo{font-size:26px}body.touchmode #reserve{font-size:13px}
+body.touchmode #weapon{font-size:11px;letter-spacing:2px}
+body.touchmode #reloadhint{font-size:11px;height:14px}
+body.touchmode #chatlog{bottom:120px;left:14px;font-size:11px;max-width:52vw}
+body.touchmode #crosshair{opacity:.9}
+body.touchmode #lootPanel{width:96vw;max-height:92vh;padding:12px 14px;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+body.touchmode .lootitem button{min-width:54px;min-height:44px;font-size:13px}
+body.touchmode .bagslot.filled{min-height:44px}
+body.touchmode #lootFoot .btn{min-height:44px}
+#btn-close-loot-top{display:none;float:right;min-width:48px;min-height:44px;margin:-3px 0 5px 8px}
+body.touchmode #btn-close-loot-top{display:block}
+body.touchmode .lootcols{grid-template-columns:1fr;gap:10px}
+body.touchmode .baggrid{grid-template-columns:repeat(6,1fr)}
+@media (orientation:landscape) and (max-height:520px){body.touchmode .lootcols{grid-template-columns:1fr 1fr;gap:14px}}
+body.touchmode #raidbar{font-size:10.5px;gap:5px;top:36px}
+body.touchmode #raidbar .chip{padding:2px 6px}
+body.touchmode #lootHint{top:auto;bottom:40%;font-size:13px}
+body.touchmode #searchbar{top:auto;bottom:35%;width:200px}
+body.touchmode #extractPanel{top:22%;width:260px}
+body.touchmode #matchinfo{letter-spacing:1px}
+body.touchmode #joystickHint{display:none}
+</style>
+</head>
+<body>
+<div id="gl"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hidden">
+  <canvas id="minimap" width="172" height="172"></canvas>
+  <canvas id="compass" width="420" height="26"></canvas>
+  <div id="matchinfo"></div>
+  <div id="killfeed"></div>
+  <div id="score-mini"></div>
+  <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="dot"></i></div>
+  <div id="hitmarker">✕</div>
+  <div id="healthwrap">
+    <div id="hpbar-bg"><div id="hpbar"></div></div>
+    <div id="hpnum">100 <small>生命值 HP</small></div>
+  </div>
+  <div id="ammowrap">
+    <div id="weapon">M4A1 · 全自动</div>
+    <div><span id="ammo">30</span> <span id="reserve">/ 120</span></div>
+    <div id="reloadhint"></div>
+  </div>
+  <div id="raidbar"></div>
+  <div id="lootHint"><b>F</b><span id="lootHintTxt">搜索容器</span></div>
+  <div id="searchbar"><i></i></div>
+  <div id="extractPanel">
+    <div class="ttl">撤 离 中</div>
+    <div class="bar"><i></i></div>
+    <div class="tip">保持站立不要离开圈子…</div>
+  </div>
+  <div id="chatlog"></div>
+  <div id="chatwrap" class="hidden"><input id="chatinput" type="text" maxlength="80" placeholder="输入聊天内容，Enter 发送，Esc 取消"></div>
+  <div id="vignette"></div>
+  <div id="dmgdir"></div>
+</div>
+<div id="respawn" class="hidden">
+  <div class="big">你 已 阵 亡</div>
+  <div class="by" id="respawn-by"></div>
+  <div class="cd" id="respawn-cd"></div>
+</div>
+<div id="scoreboard" class="hidden"></div>
+<div id="touchui" class="hidden">
+  <div id="joyzone"></div>
+  <div id="joy"><div id="joyring"></div><div id="joyknob"></div><div id="joglabel">移动 / 推到底疾跑</div></div>
+  <div id="sprintbar"><i></i></div>
+  <button class="tbtn fire" id="t-fire">开火</button>
+  <button class="tbtn sm" id="t-ads">瞄准</button>
+  <button class="tbtn sm" id="t-jump">跳跃</button>
+  <button class="tbtn sm" id="t-reload">装弹</button>
+  <button class="tbtn sm" id="t-crouch">蹲</button>
+  <button class="tbtn sm" id="t-sprint">跑</button>
+  <button class="tbtn" id="t-menu" aria-label="暂停菜单">≡</button>
+  <button class="tbtn sm" id="t-bag" aria-label="打开背包">背包</button>
+  <button class="tbtn hidden" id="t-interact" aria-label="搜索附近容器">搜索</button>
+  <div id="touchhint">左摇杆移动 · 右半屏滑动转视角 · 「开火」射击</div>
+</div>
+
+<div id="rotatehint">
+  <div class="ic">▭</div>
+  <div class="t1">请横屏游玩</div>
+  <div class="t2">横屏可获得完整视野与操作布局<br>旋转设备后自动进入</div>
+  <button class="btn primary" id="btn-force-landscape">强制全屏并继续</button>
+</div>
+
+<!-- ============ 主菜单 ============ -->
+<div id="menu" class="screen">
+  <div class="panel">
+    <h1 class="logo">三角洲行动<span class="en">DELTA FORCE · WEB OPS</span></h1>
+    <div class="sub">3D 战术射击 · 搜物资 / 打交火 / 撤出生天 · 阵亡丢失背包，保险箱保留</div>
+    <div><span class="badge">WebRTC DataChannel</span><span class="badge">房主权威 Host-Authoritative</span><span class="badge">P2P 直连 · 无需服务器</span></div>
+    <label class="lab">你的呼号（昵称）</label>
+    <input type="text" id="name-input" maxlength="12" style="width:260px">
+    <label class="lab" for="map-select">选择地图</label>
+    <select id="map-select" aria-label="选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option></select>
+    <div style="font-size:12px;color:var(--dim);margin-top:5px">单人直接选择；联机由房主决定地图。</div>
+    <div class="modegrid">
+      <div class="modecard" id="btn-single"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><circle cx="24" cy="24" r="13" fill="none" stroke="#ffb347" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#ff8c1a"/><path d="M24 2v9M24 37v9M2 24h9M37 24h9" stroke="#ffb347" stroke-width="2.5"/></svg></div><div class="t">开始行动</div><div class="d">单人搜打撤 · 对抗 7 名 AI<br>搜物资 → 交火 → 撤离</div></div>
+      <div class="modecard" id="btn-host"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><path d="M8 22 24 8l16 14" fill="none" stroke="#ffb347" stroke-width="2.5"/><path d="M13 22v18h22V22" fill="none" stroke="#ffb347" stroke-width="2.5"/><rect x="21" y="29" width="6" height="11" fill="#ff8c1a"/></svg></div><div class="t">创建房间</div><div class="d">成为房主，生成邀请码<br>邀请朋友加入战斗</div></div>
+      <div class="modecard" id="btn-guest"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><path d="M20 28l8-8" stroke="#ffb347" stroke-width="2.5"/><path d="M17 31l-3 3a6 6 0 0 1-8-8l6-6a6 6 0 0 1 8 0" fill="none" stroke="#ffb347" stroke-width="2.5"/><path d="M31 17l3-3a6 6 0 0 1 8 8l-6 6a6 6 0 0 1-8 0" fill="none" stroke="#ffb347" stroke-width="2.5"/></svg></div><div class="t">加入房间</div><div class="d">粘贴房主的邀请码<br>快速进入战场</div></div>
+    </div>
+    <div class="ctrls">
+      <span><b>WASD</b>移动</span><span><b>鼠标</b>视角</span><span><b>左键</b>射击</span><span><b>右键</b>机瞄</span>
+      <span><b>Shift</b>疾跑</span><span><b>空格</b>跳跃</span><span><b>R</b>装弹</span><span><b>Tab</b>计分板</span>
+      <span><b>T</b>聊天</span><span><b>Esc</b>暂停</span><span><b>M</b>静音</span><span><b>1</b>备用武器位</span>
+    </div>
+    <label class="lab">战术档案</label>
+    <div class="profbox" id="profile-box"></div>
+    <div class="legend">
+      <span><i style="background:#ffc14a"></i>未搜索容器</span>
+      <span><i style="background:#7dd069"></i>已开放撤离点</span>
+      <span><i style="background:#8a927e"></i>未开放撤离点</span>
+      <span><i style="background:#c07ad8"></i>高价值物资</span>
+    </div>
+    <div id="touch-opt" class="hidden" style="margin-top:14px;background:#10150c;border:1px solid var(--line);padding:12px 14px">
+      <div class="row" style="justify-content:space-between">
+        <span style="font-size:13px;color:var(--accent2);letter-spacing:1px">触屏视角灵敏度</span>
+        <span id="sens-val" style="font-size:13px;color:var(--txt)">1.00×</span>
+      </div>
+      <input id="sens-range" type="range" min="1.2" max="3.4" step="0.05" value="2.15"
+             style="width:100%;margin-top:8px;accent-color:#ff8c1a">
+      <div style="font-size:11.5px;color:var(--dim);margin-top:4px">手指滑动多少，视角就转多少（严格线性，无加速度）。滑右即向右转、滑上即向上看。</div>
+    </div>
+    <div class="note"><b>联机说明：</b>本游戏使用 WebRTC 点对点直连，没有中央服务器。房主点击「生成邀请码」发给朋友，朋友粘贴后生成「回复码」发回房主即可连接（复制粘贴交换 SDP）。双方建议使用最新版游戏和 Chrome / Edge，邀请码经过压缩，仍需交换回复码。若双方网络 NAT 严格（如部分公司/校园网），可能需要开 VPN 或在同一局域网下进行。所有战斗判定由房主模拟（房主权威），保证公平一致。</div>
+  </div>
+</div>
+
+<!-- ============ 房主信号界面 ============ -->
+<div id="signal-host" class="screen hidden">
+  <div class="panel">
+    <h2 class="ptitle">创建房间 · <span>房主 HOST</span></h2>
+    <div class="sub">为每位玩家生成一个邀请码 → 发送给对方 → 对方返回回复码 → 点击「完成连接」。可连接多名玩家。</div>
+    <label class="lab" for="host-map-select">本局地图（所有玩家一致）</label>
+    <select id="host-map-select" aria-label="房主选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option></select>
+    <div class="row" style="margin-top:10px">
+      <label style="font-size:13px;color:var(--dim)">AI 机器人补位：</label>
+      <select id="bot-count"><option value="0">0 名</option><option value="3">3 名</option><option value="5">5 名</option><option value="7" selected>7 名</option><option value="9">9 名</option></select>
+      <span style="font-size:12px;color:var(--dim)">（真人玩家加入后会自动减少机器人数量）</span>
+    </div>
+    <div id="slots"></div>
+    <div class="row">
+      <button class="btn small" id="btn-add-slot">＋ 添加玩家槽位</button>
+    </div>
+    <label class="lab">当前房间成员</label>
+    <ul class="plist" id="host-plist"></ul>
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary" id="btn-start-host">▶ 开始战斗</button>
+      <button class="btn" id="btn-host-back">返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 客人信号界面 ============ -->
+<div id="signal-guest" class="screen hidden">
+  <div class="panel">
+    <h2 class="ptitle">加入房间 · <span>GUEST</span></h2>
+    <div class="sub">把房主发来的「邀请码」粘贴到下方，生成回复码后发回给房主。</div>
+    <label class="lab">① 房主的邀请码（粘贴到这里）</label>
+    <textarea id="guest-offer" placeholder="在此粘贴房主的邀请码…"></textarea>
+    <div class="row"><button class="btn primary" id="btn-guest-gen">生成回复码</button></div>
+    <label class="lab">② 你的回复码（复制发给房主）</label>
+    <textarea id="guest-answer" readonly placeholder="生成的回复码会显示在这里…"></textarea>
+    <div class="row"><button class="btn small" id="btn-copy-answer">复制回复码</button></div>
+    <div class="note" id="guest-status">状态：等待生成回复码…</div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="btn-guest-back">返回</button></div>
+  </div>
+</div>
+
+<!-- ============ 客人等待大厅 ============ -->
+<div id="lobby" class="screen hidden">
+  <div class="panel" style="max-width:520px">
+    <h2 class="ptitle">已连接 · <span>等待房主</span></h2>
+    <div class="sub">连接成功！等待房主点击「开始战斗」…</div>
+    <ul class="plist" id="guest-plist"></ul>
+    <div class="row" style="margin-top:12px"><button class="btn" id="btn-lobby-leave">离开房间</button></div>
+  </div>
+</div>
+
+<!-- ============ 暂停 ============ -->
+<div id="pause" class="screen hidden">
+  <div class="panel">
+    <h2 class="ptitle">游戏<span>暂停</span></h2>
+    <div class="sub" id="pause-note">点击继续后重新锁定鼠标视角。</div>
+    <div class="row" style="justify-content:center;margin-top:10px">
+      <button class="btn primary" id="btn-resume">继续战斗</button>
+      <button class="btn" id="btn-quit">返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 结算 ============ -->
+<div id="endscreen" class="screen hidden">
+  <div class="panel">
+    <h2 class="ptitle">战斗<span>结束</span></h2>
+    <div class="winner" id="end-winner"></div>
+    <table id="end-table"></table>
+    <div class="row" style="justify-content:center">
+      <button class="btn primary" id="btn-again">再来一局</button>
+      <button class="btn" id="btn-end-menu">返回主菜单</button>
+    </div>
+    <div class="sub" id="end-note"></div>
+  </div>
+</div>
+
+<!-- 拾取 / 背包 -->
+<div id="lootPanel" class="hidden">
+  <button class="btn small" id="btn-close-loot-top" aria-label="关闭物资面板">关闭</button>
+  <h3>搜 索 · <span id="lootTitle">容器</span></h3>
+  <div class="sub2" id="lootSub">按 F 搜刮容器，把值钱的东西装进背包，再从撤离点带走</div>
+  <div class="lootcols">
+    <div class="lootcol">
+      <h4>容器内物资</h4>
+      <div id="lootItems"></div>
+    </div>
+    <div class="lootcol">
+      <h4>背包 <span id="bagCount" style="color:var(--txt)">0/10</span></h4>
+      <div class="baggrid" id="bagGrid"></div>
+      <h4>保险箱 <span id="safeCount" style="color:var(--accent2)">0/2</span></h4>
+      <div class="safegrid" id="safeGrid"></div>
+      <div style="font-size:11px;color:#7a8a6a;line-height:1.6">保险箱内的物资阵亡也不会丢失，但只有 2 格</div>
+    </div>
+  </div>
+  <div id="lootFoot">
+    <span>背包价值 <b id="bagValue">$0</b> · 保险箱 <b id="safeValue">$0</b></span>
+    <span><button class="btn small" id="btn-close-loot">关闭 (F / Tab)</button></span>
+  </div>
+</div>
+
+<!-- 撤离结果 -->
+<div id="extractResult" class="hidden">
+  <div class="card">
+    <div class="big" id="erTitle">撤 离 成 功</div>
+    <div class="sub" id="erSub">你已平安离开战区</div>
+    <div class="gain" id="erGain">+$0</div>
+    <div class="rows" id="erRows"></div>
+    <div class="profbox" id="erProfile"></div>
+    <div class="row" style="justify-content:center;margin-top:16px">
+      <button class="btn primary" id="btn-er-next">再 来 一 局</button>
+      <button class="btn" id="btn-er-menu">返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/*__THREE_INLINE__*/
+</script>
+<script>
