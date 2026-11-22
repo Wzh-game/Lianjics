@@ -401,7 +401,7 @@ body.touchmode #joystickHint{display:none}
     <label class="lab">你的呼号（昵称）</label>
     <input type="text" id="name-input" maxlength="12" style="width:260px">
     <label class="lab" for="map-select">选择地图</label>
-    <select id="map-select" aria-label="选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option><option value="oilfield">沙漠油田 · 储油罐与采油机</option><option value="urban">废弃城区 · 破楼与街巷</option><option value="harbor">临海港口 · 货柜与吊机</option><option value="frontier">边陲荒野 · 开放大地图（320×320）</option></select>
+    <select id="map-select" aria-label="选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option><option value="oilfield">沙漠油田 · 储油罐与采油机</option><option value="urban">废弃城区 · 破楼与街巷</option><option value="harbor">临海港口 · 货柜与吊机</option><option value="frontier">吴家村 · 开放大地图（320×320）</option></select>
     <div style="font-size:12px;color:var(--dim);margin-top:5px">单人直接选择；联机由房主决定地图。</div>
     <div class="modegrid">
       <div class="modecard" id="btn-single"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><circle cx="24" cy="24" r="13" fill="none" stroke="#ffb347" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#ff8c1a"/><path d="M24 2v9M24 37v9M2 24h9M37 24h9" stroke="#ffb347" stroke-width="2.5"/></svg></div><div class="t">开始行动</div><div class="d">单人搜打撤 · 对抗 7 名 AI<br>搜物资 → 交火 → 撤离</div></div>
@@ -452,7 +452,7 @@ body.touchmode #joystickHint{display:none}
     <h2 class="ptitle">创建房间 · <span>房主 HOST</span></h2>
     <div class="sub">为每位玩家生成一个邀请码 → 发送给对方 → 对方返回回复码 → 点击「完成连接」。可连接多名玩家。</div>
     <label class="lab" for="host-map-select">本局地图（所有玩家一致）</label>
-    <select id="host-map-select" aria-label="房主选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option><option value="oilfield">沙漠油田 · 储油罐与采油机</option><option value="urban">废弃城区 · 破楼与街巷</option><option value="harbor">临海港口 · 货柜与吊机</option><option value="frontier">边陲荒野 · 开放大地图（320×320）</option></select>
+    <select id="host-map-select" aria-label="房主选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option><option value="oilfield">沙漠油田 · 储油罐与采油机</option><option value="urban">废弃城区 · 破楼与街巷</option><option value="harbor">临海港口 · 货柜与吊机</option><option value="frontier">吴家村 · 开放大地图（320×320）</option></select>
     <div class="row" style="margin-top:10px">
       <label style="font-size:13px;color:var(--dim)">AI 机器人补位：</label>
       <select id="bot-count"><option value="0">0 名</option><option value="3">3 名</option><option value="5">5 名</option><option value="7" selected>7 名</option><option value="9">9 名</option></select>
@@ -582,7 +582,7 @@ body.touchmode #joystickHint{display:none}
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.1.0';
+DF.VERSION = '1.2.0';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1121,9 +1121,11 @@ DF.initWorld = function (scene, mapId) {
       line.rotation.x=-Math.PI/2; line.position.set(76,0.025,z); scene.add(line);
     }
   } else if (mapId === 'frontier') {
-    // 边陲荒野 · 开放大地图（320×320m）：开阔草原、河谷土路、散落掩体与遗迹，
-    // 长视线 + 分散资源点，适合大范围搜刮与遭遇战。撤离点布置在地图边缘。
-    const rndF = mulberry32(72613);   // 固定随机种，保证每局布局一致
+    // 吴家村 · 开放大地图（320×320m）：
+    //   北部 北部机场（跑道/机库/塔台/残骸客机）｜中部 吴家村（民居/祠堂/院墙/村口牌坊）
+    //   东   废弃军事基地（营房/塔台/掩体/坦克）｜西南 西南工业区（厂房/储油罐/集装箱/烟囱）
+    //   河畔 河畔集市（集市建筑/开放广场/货摊）  —— 另有河道、桥、三条公路、森林、远景山脊。
+    const rndF = mulberry32(20261122);   // 固定随机种，保证每局布局一致
     const rockMat = new T.MeshStandardMaterial({ color: 0x6f6a5c, roughness: 1, flatShading: true });
     const rockMat2 = new T.MeshStandardMaterial({ color: 0x7e7867, roughness: 1, flatShading: true });
     const pineMat = new T.MeshStandardMaterial({ color: 0x2f4d2c, roughness: 0.95, flatShading: true });
@@ -1134,37 +1136,259 @@ DF.initWorld = function (scene, mapId) {
     const hayMat = new T.MeshStandardMaterial({ color: 0xb39b56, roughness: 1 });
     const rustMatF = new T.MeshStandardMaterial({ color: 0x6e4a2e, roughness: 0.7, metalness: 0.5 });
     const bushMat = new T.MeshStandardMaterial({ color: 0x4c5a34, roughness: 1, flatShading: true });
+    const asphaltMat = new T.MeshStandardMaterial({ color: 0x3a3a3e, roughness: 0.92 });
+    const whiteMat = new T.MeshBasicMaterial({ color: 0xd8d8d0 });
+    const gateRed = new T.MeshStandardMaterial({ color: 0x7e2a1e, roughness: 0.7 });
+    const concreteMat = new T.MeshStandardMaterial({ color: 0x777d7d, roughness: 0.95 });
+    const darkMat = new T.MeshStandardMaterial({ color: 0x2a2d30, roughness: 0.8, metalness: 0.3 });
+    const roofRust = new T.MeshStandardMaterial({ color: 0x5c4a34, roughness: 0.85, metalness: 0.2 });
+    const planeMat = new T.MeshStandardMaterial({ color: 0x53575e, roughness: 0.6, metalness: 0.35 });
 
-    // 远离关键位置的散布校验（撤离点 / 中央遗迹）
-    const keepClear = [[0, -140], [136, 136], [-136, 138], [0, 0]];
+    // 远离关键位置（撤离点/村/机场/基地/工业区/集市）的散布校验
+    const keepClear = [[0,-140],[136,136],[-136,138],[0,16],[8,-118],[0,-96],[48,-100],[8,-6],[8,60],[-72,0],[-46,30],[103,11],[-108,84],[-82,100],[-124,78],[-132,93],[-119,96],[-127,108]];
     const isClear = (x, z, r) => keepClear.every(([kx, kz]) => Math.hypot(kx - x, kz - z) > r);
 
-    // ---- 土路（南北向 + 东西向交叉）与中央环岛 ----
+    // —— 小型结构助手 ——
+    function hayBale(x, z) {
+      const m = new T.Mesh(new T.CylinderGeometry(1.05, 1.05, 1.55, 12), hayMat);
+      m.rotation.z = Math.PI / 2; m.rotation.y = rndF() * 3;
+      m.position.set(x, 1.05, z); m.castShadow = true; m.receiveShadow = true; scene.add(m);
+      DF.worldMeshes.push(m);
+      DF.colliders.push({ minx: x - 1.15, maxx: x + 1.15, miny: 0, maxy: 1.6, minz: z - 1.15, maxz: z + 1.15 });
+    }
+    function drums(x, z) {
+      for (let i = 0; i < 4; i++) {
+        const dx = (i % 2) * 0.95 - 0.5, dz = Math.floor(i / 2) * 0.95 - 0.5;
+        const d = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.95, 10), i % 3 ? rustMatF : M.contB);
+        d.position.set(x + dx, 0.48, z + dz); d.castShadow = true; scene.add(d);
+      }
+      DF.colliders.push({ minx: x - 1, maxx: x + 1, miny: 0, maxy: 0.95, minz: z - 1, maxz: z + 1 });
+    }
+    function fence(x, z, len, axis) {
+      if (axis === 'x') box(x, 0, z, len, 1.0, 0.22, M.wood); else box(x, 0, z, 0.22, 1.0, len, M.wood);
+    }
+
+    function factory(cx, cz, W, D, H, doorSide) {
+      box(cx, 0, cz - D / 2, W, H, 0.9, M.wallDark);                 // 后墙
+      box(cx - W / 2, 0, cz, 0.9, H, D, M.wallDark);                 // 西墙
+      box(cx + W / 2, 0, cz, 0.9, H, D, M.wallDark);                 // 东墙
+      const dz = doorSide === 'south' ? cz + D / 2 : cz - D / 2;
+      box(cx - W / 4 - 0.8, 0, dz, W / 2 - 2.6, H, 0.9, M.wall);     // 前墙左
+      box(cx + W / 4 + 0.8, 0, dz, W / 2 - 2.6, H, 0.9, M.wall);     // 前墙右（留门洞 4m）
+      box(cx, H, cz, W + 0.6, 0.35, D + 0.6, roofRust, { collide: false, noShadow: true });
+      box(cx - W / 4, H + 0.35, cz - 1.5, 2.2, 1.1, 2.2, darkMat, { collide: false });   // 屋顶通风机
+      box(cx + W / 4, H + 0.35, cz + 1.5, 2.2, 1.1, 2.2, darkMat, { collide: false });
+    }
+
+    // ============ 河道（斜穿西南，可蹚过）+ 公路 + 桥 ============
+    const river = new T.Mesh(new T.PlaneGeometry(18, 560), waterMat);
+    river.rotation.x = -Math.PI / 2; river.rotation.z = 0.30; river.position.set(-72, 0.015, 0); scene.add(river);
+    // 公路：南北干道（机场→村→南）
     const roadNS = new T.Mesh(new T.PlaneGeometry(9, HW * 2), dirtMat);
     roadNS.rotation.x = -Math.PI / 2; roadNS.position.set(8, 0.02, 0); roadNS.receiveShadow = true; scene.add(roadNS);
+    // 公路：东西干道（工业区→桥→村口→基地）
     const roadEW = new T.Mesh(new T.PlaneGeometry(HW * 2, 9), dirtMat);
     roadEW.rotation.x = -Math.PI / 2; roadEW.position.set(0, 0.021, -6); roadEW.receiveShadow = true; scene.add(roadEW);
-    const plaza = new T.Mesh(new T.CircleGeometry(13, 28), dirtMat);
-    plaza.rotation.x = -Math.PI / 2; plaza.position.set(0, 0.022, 0); plaza.receiveShadow = true; scene.add(plaza);
+    // 公路：南线（工业区→村南→基地）
+    const roadS = new T.Mesh(new T.PlaneGeometry(HW * 2, 8), dirtMat);
+    roadS.rotation.x = -Math.PI / 2; roadS.position.set(0, 0.022, 60); roadS.receiveShadow = true; scene.add(roadS);
+    // 河上桥（东西干道跨处）：桥面可走，两侧护栏装饰
+    box(-67, 0, -6, 21, 0.35, 8, concreteMat, { collide: false, noShadow: true });
+    box(-67, 0.35, -10, 21, 0.75, 0.3, concreteMat, { collide: false });
+    box(-67, 0.35, -2, 21, 0.75, 0.3, concreteMat, { collide: false });
+    // 十字路口与村口广场
+    const cross = new T.Mesh(new T.CircleGeometry(9, 26), dirtMat);
+    cross.rotation.x = -Math.PI / 2; cross.position.set(8, 0.023, -6); cross.receiveShadow = true; scene.add(cross);
+    const cross2 = new T.Mesh(new T.CircleGeometry(7, 24), dirtMat);
+    cross2.rotation.x = -Math.PI / 2; cross2.position.set(8, 0.023, 60); cross2.receiveShadow = true; scene.add(cross2);
 
-    // ---- 河（斜穿西南，视觉水面，可蹚过）----
-    const river = new T.Mesh(new T.PlaneGeometry(15, 560), waterMat);
-    river.rotation.x = -Math.PI / 2; river.rotation.z = 0.62; river.position.set(-88, 0.015, 8); scene.add(river);
-
-    // ---- 巨石（采石场 + 散点）----
-    function boulder(x, z, r) {
-      const m = new T.Mesh(new T.DodecahedronGeometry(r, 0), rndF() < 0.5 ? rockMat : rockMat2);
-      m.position.set(x, r * 0.55, z);
-      m.rotation.set(rndF() * 3, rndF() * 3, rndF() * 3);
-      m.castShadow = true; m.receiveShadow = true; scene.add(m);
-      DF.worldMeshes.push(m);
-      DF.colliders.push({ minx: x - r * 0.78, maxx: x + r * 0.78, miny: 0, maxy: r * 1.15, minz: z - r * 0.78, maxz: z + r * 0.78 });
-      DF.obstacleMeta.push({ x, z, w: r * 1.56, d: r * 1.56, h: r * 1.15 });
+    // ============ 北部机场（跑道/机库/塔台/残骸客机）============
+    // 跑道 + 标线
+    const runway = new T.Mesh(new T.PlaneGeometry(120, 13), asphaltMat);
+    runway.rotation.x = -Math.PI / 2; runway.position.set(0, 0.025, -118); runway.receiveShadow = true; scene.add(runway);
+    for (let x = -52; x <= 52; x += 8) {
+      const dash = new T.Mesh(new T.PlaneGeometry(3.2, 0.5), whiteMat);
+      dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.028, -118); scene.add(dash);
     }
-    [[62,-62,5.0],[73,-54,3.3],[54,-71,4.1],[71,-73,2.6],[46,-57,2.2],[83,-66,1.8]].forEach(([x,z,r]) => boulder(x, z, r));
-    [[-128,-32,3.1],[-88,-118,2.6],[122,-108,3.4],[28,62,2.3],[-42,-78,2.7],[106,78,2.9],[-126,96,2.5],[14,128,2.1],[128,-28,2.0],[-58,64,1.8]].forEach(([x,z,r]) => boulder(x, z, r));
+    [-111.2, -124.8].forEach(z => {
+      const edge = new T.Mesh(new T.PlaneGeometry(120, 0.4), whiteMat);
+      edge.rotation.x = -Math.PI / 2; edge.position.set(0, 0.028, z); scene.add(edge);
+    });
+    // 机库（可进入，门洞朝南）
+    function hangar(cx, cz, W, D, H) {
+      box(cx, 0, cz - D / 2, W, H, 0.9, M.wallDark);                       // 后墙
+      box(cx - W / 2, 0, cz, 0.9, H, D, M.wallDark);                       // 西墙
+      box(cx + W / 2, 0, cz, 0.9, H, D, M.wallDark);                       // 东墙
+      box(cx - W / 2 + 2.5, 0, cz + D / 2, 5, H, 0.9, M.wall);             // 前墙左段
+      box(cx + W / 2 - 2.5, 0, cz + D / 2, 5, H, 0.9, M.wall);             // 前墙右段
+      box(cx, H - 2.0, cz + D / 2, W - 10, 2.0, 0.9, M.metal, { collide: false });  // 门楣
+      const roof1 = new T.Mesh(new T.BoxGeometry(W * 0.62, 0.28, D + 1.2), rustMatF);
+      roof1.position.set(cx - W * 0.26, H + 0.7, cz); roof1.rotation.z = 0.18; scene.add(roof1);
+      const roof2 = new T.Mesh(new T.BoxGeometry(W * 0.62, 0.28, D + 1.2), rustMatF);
+      roof2.position.set(cx + W * 0.26, H + 0.7, cz); roof2.rotation.z = -0.18; scene.add(roof2);
+    }
+    hangar(-32, -96, 22, 13, 7);
+    hangar(18, -96, 22, 13, 7);
+    // 塔台
+    const towerShaft = new T.Mesh(new T.CylinderGeometry(1.7, 2.1, 9.5, 10), M.metal);
+    towerShaft.position.set(48, 4.75, -101); towerShaft.castShadow = true; scene.add(towerShaft);
+    DF.worldMeshes.push(towerShaft);
+    box(48, 9.5, -101, 4.6, 2.6, 4.6, M.wallDark);
+    box(48, 12.1, -101, 5.2, 0.3, 5.2, rustMatF, { collide: false, noShadow: true });
+    box(48, 0, -101, 4.2, 1.2, 4.2, concreteMat);
+    const antenna = new T.Mesh(new T.CylinderGeometry(0.08, 0.12, 3.4, 6), M.metal);
+    antenna.position.set(48, 13.6, -101); scene.add(antenna);
+    DF.colliders.push({ minx: 46.3, maxx: 49.7, miny: 0, maxy: 9.5, minz: -102.7, maxz: -99.3 });
+    // 残骸客机（停在跑道上）
+    const fuselage = new T.Mesh(new T.CylinderGeometry(1.6, 1.6, 13, 12), planeMat);
+    fuselage.rotation.z = Math.PI / 2; fuselage.position.set(0, 1.7, -118); fuselage.castShadow = true; scene.add(fuselage);
+    const nose = new T.Mesh(new T.ConeGeometry(1.6, 3.2, 12), planeMat);
+    nose.rotation.z = -Math.PI / 2; nose.position.set(8.1, 1.7, -118); scene.add(nose);
+    const tailFin = new T.Mesh(new T.BoxGeometry(0.25, 2.6, 1.8), rustMatF);
+    tailFin.position.set(-5.6, 3.8, -118); scene.add(tailFin);
+    const wingL = new T.Mesh(new T.BoxGeometry(3.4, 0.16, 7.2), planeMat);
+    wingL.position.set(0.6, 1.9, -118); wingL.rotation.x = 0.06; scene.add(wingL);
+    const tailWing = new T.Mesh(new T.BoxGeometry(2.2, 0.14, 4.6), planeMat);
+    tailWing.position.set(-5.8, 2.6, -118); scene.add(tailWing);
+    DF.colliders.push({ minx: -6.6, maxx: 6.6, miny: 0, maxy: 3.4, minz: -121.7, maxz: -114.3 });
+    DF.obstacleMeta.push({ x: 0, z: -118, w: 13, d: 7, h: 3.4 });
+    // 机场围栏（南侧，中间留路口）
+    fence(-29, -84, 66, 'x'); fence(37, -84, 50, 'x');
 
-    // ---- 松林（簇 + 孤树）----
+    // ============ 吴家村（民居/祠堂/院墙/村口牌坊）============
+    function house(x, z, w, d, h, bodyMat, roofMat) {
+      box(x, 0, z - d / 2, w, h, 0.7, bodyMat);                     // 后墙
+      box(x - w / 2, 0, z, 0.7, h, d, bodyMat);                     // 西墙
+      box(x + w / 2, 0, z, 0.7, h, d, bodyMat);                     // 东墙
+      box(x - w / 2 + 1.5, 0, z + d / 2, w / 2 - 1.2, h, 0.7, bodyMat);  // 前墙左（留门洞）
+      box(x + w / 2 - 1.5, 0, z + d / 2, w / 2 - 1.2, h, 0.7, bodyMat);  // 前墙右
+      const r1 = new T.Mesh(new T.BoxGeometry(w + 1.6, 0.25, d * 0.62), roofMat);
+      r1.position.set(x, h + 0.72, z - d * 0.24); r1.rotation.x = 0.34; r1.castShadow = true; scene.add(r1);
+      const r2 = new T.Mesh(new T.BoxGeometry(w + 1.6, 0.25, d * 0.62), roofMat);
+      r2.position.set(x, h + 0.72, z + d * 0.24); r2.rotation.x = -0.34; r2.castShadow = true; scene.add(r2);
+    }
+    house(-13, 6, 7, 6, 3.6, M.wood, rustMatF);
+    house(12, 4, 6, 5.5, 3.3, M.wall, rustMatF);
+    house(-14, 24, 6, 5, 3.2, M.wall, rustMatF);
+    house(13, 24, 7, 6, 3.7, M.wood, rustMatF);
+    // 祠堂（村中心）
+    house(0, 14.5, 9, 7, 4.2, M.wallDark, rustMatF);
+    // 井
+    const well = new T.Mesh(new T.CylinderGeometry(1.1, 1.2, 0.9, 10), concreteMat);
+    well.position.set(7.5, 0.45, 19); well.castShadow = true; scene.add(well);
+    DF.worldMeshes.push(well);
+    DF.colliders.push({ minx: 6.4, maxx: 8.6, miny: 0, maxy: 0.9, minz: 17.9, maxz: 20.1 });
+    // 院墙（北墙留路口，东西低墙，南面开放）
+    box(-9.5, 0, 1.5, 21, 1.3, 0.45, M.wallDark);
+    box(16.5, 0, 1.5, 7, 1.3, 0.45, M.wallDark);
+    box(19, 0, 13, 0.45, 1.3, 23, M.wallDark);
+    box(-19, 0, 13, 0.45, 1.3, 21, M.wallDark);
+    box(-19, 0, 2.6, 0.45, 1.1, 2.4, M.wallDark);
+    // 村口牌坊（北入口，横跨南北干道）
+    box(4.2, 0, -12, 1.25, 5.6, 1.25, gateRed);
+    box(11.8, 0, -12, 1.25, 5.6, 1.25, gateRed);
+    box(8, 5.6, -12, 9.6, 0.9, 1.5, gateRed);
+    box(8, 4.3, -12, 6.4, 0.55, 1.0, gateRed, { collide: false });
+    // 牌匾「吴家村」
+    const signC = document.createElement('canvas'); signC.width = 256; signC.height = 96;
+    const sg = signC.getContext('2d');
+    sg.fillStyle = '#2b1a10'; sg.fillRect(0, 0, 256, 96);
+    sg.strokeStyle = '#c9a227'; sg.lineWidth = 6; sg.strokeRect(5, 5, 246, 86);
+    sg.fillStyle = '#e8c56a'; sg.font = 'bold 52px serif'; sg.textAlign = 'center'; sg.textBaseline = 'middle';
+    sg.fillText('吴家村', 128, 52);
+    const signTex = new T.CanvasTexture(signC);
+    const signMat2 = new T.MeshStandardMaterial({ map: signTex, roughness: 0.6 });
+    const signN = new T.Mesh(new T.PlaneGeometry(3.6, 1.35), signMat2);
+    signN.position.set(8, 4.95, -12.79); signN.rotation.y = Math.PI; scene.add(signN);
+    const signS = new T.Mesh(new T.PlaneGeometry(3.6, 1.35), signMat2);
+    signS.position.set(8, 4.95, -11.21); scene.add(signS);
+    // 干草与杂物
+    hayBale(-9, 12); hayBale(14, 12); hayBale(-26, 9);
+
+    // ============ 河畔集市（集市建筑/开放广场/货摊）============
+    const plaza = new T.Mesh(new T.CircleGeometry(9, 26), dirtMat);
+    plaza.rotation.x = -Math.PI / 2; plaza.position.set(-46, 0.024, 30); plaza.receiveShadow = true; scene.add(plaza);
+    // 集市建筑（朝广场开门）
+    house(-56, 19.5, 5.5, 4.5, 3.4, M.wall, M.contA);
+    house(-46, 17.5, 5.5, 4.5, 3.4, M.wallDark, M.contA);
+    house(-36, 19.5, 5.5, 4.5, 3.4, M.wood, M.contA);
+    // 货摊（两排对面，桌面可挡弹但人可过低缝——仅桌面碰撞）
+    const stallMats = [M.contA, M.contB, M.contC, M.sand, hayMat, M.wood];
+    [[-52, 27], [-52, 31], [-52, 35], [-40, 27], [-40, 31], [-40, 35]].forEach(([sx, sz], i) => {
+      box(sx, 0, sz, 2.3, 0.9, 1.5, M.wood);
+      const aw = new T.Mesh(new T.BoxGeometry(2.7, 0.12, 2.1), stallMats[i % stallMats.length]);
+      aw.position.set(sx, 2.15, sz); scene.add(aw);
+      box(sx - 1.15, 0.9, sz - 0.85, 0.14, 1.25, 0.14, M.wood, { collide: false });
+      box(sx + 1.15, 0.9, sz - 0.85, 0.14, 1.25, 0.14, M.wood, { collide: false });
+    });
+    drums(-51, 39.5); drums(-41, 24);
+
+    // ============ 废弃军事基地（营房/塔台/掩体/坦克）============
+    factory(103, 2, 19, 6.5, 4.6, 'south');                     // 营房A（可进入）
+    factory(106, 20, 17, 6.5, 4.2, 'south');                     // 营房B（可进入）
+    // 枪眼（视觉）
+    box(93.4, 2.2, 2, 0.15, 0.7, 2.2, darkMat, { collide: false });
+    box(97.4, 2.1, 20, 0.15, 0.7, 2.2, darkMat, { collide: false });
+    // 塔台（东侧高点）
+    [[-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [1.7, 1.7]].forEach(([dx, dz]) => box(121 + dx, 0, 11 + dz, 0.55, 7.6, 0.55, M.wood));
+    box(121, 6.9, 11, 5.6, 0.35, 5.6, M.wood, { collide: false, noShadow: true });
+    box(121, 7.25, 8.4, 5.6, 1.1, 0.3, M.wood, { collide: false });
+    box(121, 7.25, 13.6, 5.6, 1.1, 0.3, M.wood, { collide: false });
+    box(118.4, 7.25, 11, 0.3, 1.1, 5.6, M.wood, { collide: false });
+    box(123.6, 7.25, 11, 0.3, 1.1, 5.6, M.wood, { collide: false });
+    const milRoof = new T.Mesh(new T.ConeGeometry(4.3, 1.5, 4), rustMatF);
+    milRoof.position.set(121, 9.4, 11); milRoof.rotation.y = Math.PI / 4; milRoof.castShadow = true; scene.add(milRoof);
+    // 混凝土掩体（半埋，顶面可站）
+    box(112, -0.6, -8, 4.6, 2.4, 3.2, concreteMat);
+    box(96, -0.6, -12, 4.6, 2.4, 3.2, concreteMat);
+    // 沙袋阵地
+    box(93, 0, 14, 6, 1.05, 1, M.sand);
+    box(113, 0, 6.5, 1, 1.05, 6, M.sand);
+    box(104, 0, -4, 5, 1.05, 1, M.sand);
+    // 废弃坦克
+    box(96, 0, 11, 4.8, 1.15, 2.7, darkMat);
+    box(96, 0, 11, 5.0, 0.55, 1.1, darkMat, { collide: false });
+    box(96.6, 1.15, 11, 2.3, 0.85, 1.9, rustMatF);
+    const barrel = new T.Mesh(new T.CylinderGeometry(0.09, 0.09, 3.2, 8), darkMat);
+    barrel.rotation.z = Math.PI / 2; barrel.position.set(93.6, 1.55, 11); scene.add(barrel);
+    DF.obstacleMeta.push({ x: 96, z: 11, w: 5, d: 2.7, h: 2 });
+
+    // ============ 西南工业区（厂房/储油罐/集装箱/烟囱）============
+    factory(-108, 84, 26, 13, 7, 'south');
+    factory(-82, 100, 26, 13, 7, 'north');
+    // 储油罐（圆柱+顶盖，独立碰撞）
+    function tank(x, z, r, h) {
+      const body = new T.Mesh(new T.CylinderGeometry(r, r, h, 18), new T.MeshStandardMaterial({ color: 0x8a6f4a, roughness: 0.55, metalness: 0.5 }));
+      body.position.set(x, h / 2, z); body.castShadow = true; body.receiveShadow = true; scene.add(body);
+      DF.worldMeshes.push(body);
+      const roof = new T.Mesh(new T.CylinderGeometry(r * 1.02, r * 1.02, 0.25, 18), rustMatF);
+      roof.position.set(x, h + 0.12, z); scene.add(roof);
+      DF.colliders.push({ minx: x - r * 0.78, maxx: x + r * 0.78, miny: 0, maxy: h, minz: z - r * 0.78, maxz: z + r * 0.78 });
+      DF.obstacleMeta.push({ x, z, w: r * 1.6, d: r * 1.6, h });
+    }
+    tank(-124, 78, 4.2, 8.5); tank(-132, 93, 3.6, 7.5); tank(-119, 96, 4.6, 9.5); tank(-127, 108, 3.2, 7);
+    // 烟囱
+    [[-96, 70, 18], [-84, 112, 15]].forEach(([x, z, h]) => {
+      const s = new T.Mesh(new T.CylinderGeometry(1.0, 1.4, h, 10), concreteMat);
+      s.position.set(x, h / 2, z); s.castShadow = true; scene.add(s);
+      DF.worldMeshes.push(s);
+      const band = new T.Mesh(new T.CylinderGeometry(1.05, 1.05, 1.6, 10), new T.MeshStandardMaterial({ color: 0x8a2f22, roughness: 0.6 }));
+      band.position.set(x, h - 1.2, z); scene.add(band);
+      DF.colliders.push({ minx: x - 1.3, maxx: x + 1.3, miny: 0, maxy: h, minz: z - 1.3, maxz: z + 1.3 });
+      DF.obstacleMeta.push({ x, z, w: 2.4, d: 2.4, h });
+    });
+    // 集装箱堆场
+    const cms = [M.contA, M.contB, M.contC];
+    [[-100, 97, 0], [-93, 99, 1], [-100, 97, 2, 2.9], [-89, 90, 0, 2.9]].forEach(([x, z, rot, stack], i) => {
+      const w = rot ? 3.2 : 8, d = rot ? 8 : 3.2;
+      box(x, stack || 0, z, w, 2.9, d, cms[i % 3]);
+    });
+    // 输油管（视觉）
+    box(-110, 0.4, 92, 34, 0.8, 0.9, darkMat, { collide: false });
+    box(-96, 0.4, 84, 0.9, 0.8, 22, darkMat, { collide: false });
+    drums(-100, 88);
+
+    // ============ 森林（簇 + 孤树）============
     function pine(x, z, s) {
       s = s || 1;
       const trunkH = 1.6 * s, trunkR = 0.32 * s;
@@ -1176,124 +1400,39 @@ DF.initWorld = function (scene, mapId) {
       c2.position.set(x, trunkH + 3.1 * s, z); c2.castShadow = true; scene.add(c2);
       DF.colliders.push({ minx: x - 0.5 * s, maxx: x + 0.5 * s, miny: 0, maxy: trunkH + 1, minz: z - 0.5 * s, maxz: z + 0.5 * s });
     }
-    [[-96,-96],[94,-82],[-112,52],[82,104],[-24,-122],[118,12],[-58,124],[36,142]].forEach(([cx, cz]) => {
-      const n = 5 + Math.floor(rndF() * 5);
+    [[-138,-104],[130,-116],[-144,38],[138,64],[-34,136],[66,146],[-92,-46],[128,-32]].forEach(([cx, cz]) => {
+      const n = 5 + Math.floor(rndF() * 4);
       for (let i = 0; i < n; i++) {
-        const a = rndF() * Math.PI * 2, rr = 3 + rndF() * 15;
+        const a = rndF() * Math.PI * 2, rr = 3 + rndF() * 14;
         pine(cx + Math.cos(a) * rr, cz + Math.sin(a) * rr, 0.72 + rndF() * 0.85);
       }
     });
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 14; i++) {
       let x = 0, z = 0, ok = false;
       for (let t = 0; t < 8 && !ok; t++) { x = rndF() * 290 - 145; z = rndF() * 290 - 145; ok = isClear(x, z, 9); }
       if (ok) pine(x, z, 0.7 + rndF() * 0.9);
     }
 
-    // ---- 灌木丛（无碰撞，纯视觉）----
-    for (let i = 0; i < 70; i++) {
+    // ============ 巨石散点 ============
+    function boulder(x, z, r) {
+      const m = new T.Mesh(new T.DodecahedronGeometry(r, 0), rndF() < 0.5 ? rockMat : rockMat2);
+      m.position.set(x, r * 0.55, z);
+      m.rotation.set(rndF() * 3, rndF() * 3, rndF() * 3);
+      m.castShadow = true; m.receiveShadow = true; scene.add(m);
+      DF.worldMeshes.push(m);
+      DF.colliders.push({ minx: x - r * 0.78, maxx: x + r * 0.78, miny: 0, maxy: r * 1.15, minz: z - r * 0.78, maxz: z + r * 0.78 });
+      DF.obstacleMeta.push({ x, z, w: r * 1.56, d: r * 1.56, h: r * 1.15 });
+    }
+    [[-150,-128,2.6],[150,-140,2.4],[44,120,2.2],[-146,-20,2.8],[156,18,2.0],[-64,-128,2.3]].forEach(([x,z,r]) => boulder(x, z, r));
+
+    // ============ 灌木与栅栏 ============
+    for (let i = 0; i < 60; i++) {
       const bx = rndF() * 300 - 150, bz = rndF() * 300 - 150, bs = 0.5 + rndF() * 0.9;
       const bush = new T.Mesh(new T.IcosahedronGeometry(bs, 0), bushMat);
       bush.position.set(bx, bs * 0.55, bz); bush.scale.y = 0.7; scene.add(bush);
     }
-
-    // ---- 干草垛 ----
-    function hayBale(x, z) {
-      const m = new T.Mesh(new T.CylinderGeometry(1.05, 1.05, 1.55, 12), hayMat);
-      m.rotation.z = Math.PI / 2; m.rotation.y = rndF() * 3;
-      m.position.set(x, 1.05, z); m.castShadow = true; m.receiveShadow = true; scene.add(m);
-      DF.worldMeshes.push(m);
-      DF.colliders.push({ minx: x - 1.15, maxx: x + 1.15, miny: 0, maxy: 1.6, minz: z - 1.15, maxz: z + 1.15 });
-    }
-
-    // ---- 栅栏 ----
-    function fence(x, z, len, axis) {
-      if (axis === 'x') box(x, 0, z, len, 1.0, 0.22, M.wood); else box(x, 0, z, 0.22, 1.0, len, M.wood);
-    }
-
-    // ---- 西北谷仓（农舍）----
-    box(-76, 0, -48.5, 11, 4.8, 0.9, M.wood);              // 北墙
-    box(-81.5, 0, -42, 0.9, 4.3, 13, M.wood);              // 西墙
-    box(-70.5, 0, -42, 0.9, 4.3, 13, M.wood);              // 东墙
-    box(-79.2, 0, -35.5, 5.2, 4.8, 0.9, M.wood);           // 南墙左
-    box(-72.9, 0, -35.5, 4.0, 4.8, 0.9, M.wood);           // 南墙右（中间留门洞）
-    const barnRoof1 = new T.Mesh(new T.BoxGeometry(13, 0.28, 8.8), rustMatF);
-    barnRoof1.position.set(-76, 5.35, -44.7); barnRoof1.rotation.x = 0.30; barnRoof1.castShadow = true; scene.add(barnRoof1);
-    const barnRoof2 = new T.Mesh(new T.BoxGeometry(13, 0.28, 8.8), rustMatF);
-    barnRoof2.position.set(-76, 5.35, -39.4); barnRoof2.rotation.x = -0.30; barnRoof2.castShadow = true; scene.add(barnRoof2);
-    box(-64.5, 0, -38.5, 1.8, 1.8, 1.8, M.wood);           // 门口木箱
-    hayBale(-66.5, -46.5); hayBale(-68.2, -48.1);
-    fence(-76, -28, 16, 'x'); fence(-88.5, -34, 12, 'y'); fence(-63.5, -41, 9, 'y');
-
-    // ---- 风车丘陵（中北）----
-    box(18, 0, -88, 2.3, 9.5, 2.3, M.metal);
-    const windmillHub = new T.Mesh(new T.SphereGeometry(0.55, 10, 8), rustMatF);
-    windmillHub.position.set(18, 10.3, -88); scene.add(windmillHub);
-    const blade1 = new T.Mesh(new T.BoxGeometry(0.42, 8.6, 0.12), M.metal);
-    blade1.position.set(18, 10.3, -87.3); blade1.rotation.z = 0.5; scene.add(blade1);
-    const blade2 = new T.Mesh(new T.BoxGeometry(0.42, 8.6, 0.12), M.metal);
-    blade2.position.set(18, 10.3, -87.3); blade2.rotation.z = 0.5 + Math.PI / 2; scene.add(blade2);
-    box(12, 0, -82, 1.5, 1.2, 1.5, M.metal);               // 控制箱
-
-    // ---- 瞭望塔（东，仅支柱参与碰撞）----
-    [[-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [1.7, 1.7]].forEach(([dx, dz]) => box(76 + dx, 0, 32 + dz, 0.55, 7.6, 0.55, M.wood));
-    box(76, 6.9, 32, 5.6, 0.35, 5.6, M.wood, { collide: false, noShadow: true });   // 平台
-    box(76, 7.25, 29.4, 5.6, 1.1, 0.3, M.wood, { collide: false });                 // 栏杆
-    box(76, 7.25, 34.6, 5.6, 1.1, 0.3, M.wood, { collide: false });
-    box(73.4, 7.25, 32, 0.3, 1.1, 5.6, M.wood, { collide: false });
-    box(78.6, 7.25, 32, 0.3, 1.1, 5.6, M.wood, { collide: false });
-    const wtRoof = new T.Mesh(new T.ConeGeometry(4.5, 1.7, 4), rustMatF);
-    wtRoof.position.set(76, 9.9, 32); wtRoof.rotation.y = Math.PI / 4; wtRoof.castShadow = true; scene.add(wtRoof);
-
-    // ---- 卡车残骸 ----
-    function truck(x, z) {
-      box(x, 0, z, 6.6, 2.3, 2.7, M.metal);
-      box(x + 4.9, 0, z, 2.3, 1.5, 2.5, M.wallDark);
-      box(x, 2.3, z, 6.6, 0.18, 2.7, rustMatF, { collide: false, noShadow: true });
-    }
-    truck(-25, -14); truck(118, -6);
-
-    // ---- 南部废村（半塌房屋 + 断墙）----
-    function shack(x, z, w, d, h, eastOpen) {
-      box(x, 0, z - d / 2, w, h, 0.7, M.wallDark);              // 后墙
-      box(x - w / 2, 0, z, 0.7, h, d, M.wallDark);              // 西墙
-      if (!eastOpen) box(x + w / 2, 0, z, 0.7, h, d, M.wall);   // 东墙（有的塌了）
-      box(x, 0, z + d / 2, w, h, 0.7, M.wall);                  // 前墙
-      box(x, h, z, w + 0.4, 0.3, d + 0.4, M.wood, { collide: false, noShadow: true });
-    }
-    shack(-48, 96, 7.5, 6.5, 3.6, true);
-    shack(-28, 108, 6.5, 5.5, 3.1, false);
-    shack(-15, 88, 8.5, 6.5, 3.9, true);
-    box(-38, 0, 101, 5, 1.3, 0.8, M.wallDark);
-    box(-22, 0, 97, 0.8, 1.1, 5, M.wallDark);
-    hayBale(-42, 89); hayBale(-31, 100.5);
-
-    // ---- 中央遗迹（空投区，全图必争）----
-    const ruinBase = new T.Mesh(new T.CylinderGeometry(10.5, 10.5, 0.16, 24), M.wallDark);
-    ruinBase.position.set(0, 0.08, 0); ruinBase.receiveShadow = true; scene.add(ruinBase); DF.worldMeshes.push(ruinBase);
-    [[6.5, 6.5], [0, 9.2], [-9.2, 0], [-6.5, -6.5], [6.5, -6.5]].forEach(([px, pz]) => {
-      const h = 2.0 + rndF() * 1.4;
-      const pm = new T.Mesh(new T.CylinderGeometry(0.75, 0.85, h, 9), M.wall);
-      pm.position.set(px, h / 2 + 0.16, pz); pm.castShadow = true; pm.receiveShadow = true; scene.add(pm);
-      DF.worldMeshes.push(pm);
-      DF.colliders.push({ minx: px - 0.8, maxx: px + 0.8, miny: 0, maxy: h + 0.16, minz: pz - 0.8, maxz: pz + 0.8 });
-      DF.obstacleMeta.push({ x: px, z: pz, w: 1.7, d: 1.7, h: h });
-    });
-
-    // ---- 油桶堆 ----
-    function drums(x, z) {
-      for (let i = 0; i < 4; i++) {
-        const dx = (i % 2) * 0.95 - 0.5, dz = Math.floor(i / 2) * 0.95 - 0.5;
-        const d = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.95, 10), i % 3 ? rustMatF : M.contB);
-        d.position.set(x + dx, 0.48, z + dz); d.castShadow = true; scene.add(d);
-      }
-      DF.colliders.push({ minx: x - 1, maxx: x + 1, miny: 0, maxy: 0.95, minz: z - 1, maxz: z + 1 });
-    }
-    drums(124, 18); drums(-100, -20);
-
-    // ---- 农田石垄（视觉掩体线）----
-    fence(30, 40, 18, 'x'); fence(-52, -52, 14, 'x'); fence(96, 44, 12, 'y'); fence(-96, 120, 10, 'x');
+    fence(-30, 44, 16, 'x'); fence(34, 30, 12, 'y'); fence(-58, 52, 12, 'x'); fence(120, 40, 10, 'y'); fence(60, -80, 12, 'x');
   }
-
   // ===== 远处山体剪影（装饰）=====
   const mtnMats = [
     new T.MeshStandardMaterial({ color: 0x6b7261, roughness: 1, flatShading: true }),
@@ -4932,30 +5071,26 @@ DF.buildExtractionWorld = function (scene) {
 
   /* 布置容器（按地图分开布置，贴合各自建筑） */
   if (mapId === 'frontier') {
-    // 边陲荒野：容器散布全图 320×320m，鼓励大范围搜索
-    // 西北谷仓（农舍）
-    addContainer('locker', -78, -44, 0.2); addContainer('locker', -74.5, -45, 0.2);
-    addContainer('safe', -76, -40.2, 0.4); addContainer('crate', -63, -41);
-    // 东北采石场
-    addContainer('crate', 55, -63); addContainer('crate', 66, -56); addContainer('safe', 71, -66, 1.2);
-    // 风车丘陵
-    addContainer('crate', 15, -84); addContainer('locker', 22, -92, 2.0);
-    // 瞭望塔（东）
-    addContainer('locker', 73, 28.5, 1.0); addContainer('crate', 80, 34);
-    // 南部废村
-    addContainer('locker', -46, 94, 0.4); addContainer('crate', -28, 109.5);
-    addContainer('safe', -15.5, 86.8, 0.9); addContainer('crate', -34, 98.5);
-    // 河畔营地（西）
-    addContainer('crate', -102, 40); addContainer('locker', -113, 52, 1.4);
-    // 卡车残骸
-    addContainer('crate', -19, -19); addContainer('locker', 111, -10, 0.6);
-    // 中央遗迹（高价值，全图争夺）
-    addContainer('safe', 4.5, -4, 0.3); addContainer('crate', -5, 3);
-    // 沿路与田野零散
-    addContainer('crate', 30, 22); addContainer('crate', -38, -28); addContainer('crate', 44, -34);
-    addContainer('locker', -8, 58); addContainer('crate', 52, 68); addContainer('crate', -68, 8);
-    addContainer('locker', 96, -32, 0.2); addContainer('crate', 16, 126);
-    addContainer('safe', -92, -84, 0.7); addContainer('locker', -128, -8, 0.2);
+    // 吴家村 · 开放大地图：容器贴地标布置（机场/吴家村/集市/军事基地/工业区 + 野外）
+    // 北部机场：机库、塔台、残骸客机
+    addContainer('crate', -32, -97); addContainer('safe', 18, -93, 0.4);
+    addContainer('locker', 44.5, -96.5, 1.6); addContainer('crate', 12, -112.5);
+    // 吴家村：民居、祠堂、村口
+    addContainer('crate', -13, 6.5); addContainer('locker', 12, 4.5, 0.4);
+    addContainer('safe', 0, 13.5, 2.0); addContainer('crate', 7.5, -16);
+    // 河畔集市
+    addContainer('locker', -56, 24.5, 0.2); addContainer('crate', -43, 33); addContainer('safe', -49, 36, 1.8);
+    // 废弃军事基地
+    addContainer('locker', 99, 1.5, 0.1); addContainer('crate', 106, 19.5); addContainer('safe', 112, -4.8, 0.9);
+    // 西南工业区
+    addContainer('safe', -108, 83, 0.3); addContainer('crate', -92.5, 99);
+    addContainer('locker', -112, 100, 1.2); addContainer('crate', -100, 74);
+    // 野外零散
+    addContainer('crate', -128, -58); addContainer('locker', 60, -58);
+    addContainer('crate', 24, 84); addContainer('locker', -30, -88);
+    addContainer('crate', 140, -48); addContainer('crate', 16, 126);
+    addContainer('locker', -128, -8); addContainer('safe', 118, 120, 0.6);
+    addContainer('crate', -64, -136);
   } else {
   // 仓库内部
   addContainer('locker', -56, -46, 0.2); addContainer('locker', -56, -42, 0.2);
@@ -4977,8 +5112,8 @@ DF.buildExtractionWorld = function (scene) {
   addContainer('locker', -62, -12, 1.2); addContainer('crate', 59, -22);
   addContainer('crate', -40, 45); addContainer('crate', 44, 46);
   }
-  // 空投（局内第 5 分钟投放，初始隐藏；开放大地图落点 = 地图中心遗迹）
-  const airSpot = mapId === 'frontier' ? [0, 0] : [0, -20];
+  // 空投（局内第 5 分钟投放，初始隐藏；吴家村落点 = 村中心广场）
+  const airSpot = mapId === 'frontier' ? [2, 22] : [0, -20];   // 吴家村：空投落村中心
   const air = addContainer('airdrop', airSpot[0], airSpot[1]);
   air.pendingDrop = true;
   air.mesh.visible = false;
