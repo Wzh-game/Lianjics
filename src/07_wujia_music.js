@@ -29,11 +29,20 @@ DF.WujiaMusic = (() => {
     toggling = true;
     try {
       if (audio.paused) {
-        await audio.play();
-        notify('🎵 正在播放吴家村专属小曲《十一笔》');
+        // 吴家村歌曲拥有当前播放优先权：暂停游戏背景音乐，阻止其自动抢播。
+        if (DF.Music && typeof DF.Music.pauseForExternal === 'function') DF.Music.pauseForExternal();
+        try {
+          await audio.play();
+          notify('🎵 正在播放吴家村专属小曲《十一笔》');
+        } catch (playError) {
+          if (DF.Music && typeof DF.Music.resumeAfterExternal === 'function') DF.Music.resumeAfterExternal();
+          throw playError;
+        }
       } else {
         audio.pause();
-        notify('已暂停《十一笔》');
+        // 用户暂停吴家村歌曲后，恢复游戏原有背景音乐。
+        if (DF.Music && typeof DF.Music.resumeAfterExternal === 'function') DF.Music.resumeAfterExternal();
+        notify('已暂停《十一笔》，游戏背景音乐已恢复');
       }
     } catch (error) {
       notify('《十一笔》播放失败，请检查网络或音频文件');
