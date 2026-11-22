@@ -112,10 +112,51 @@ DF.EXTRACT_DEFS = [
   { id: 'ex-se', name: '东南撤离点', x: 72, z: 66, openAt: 150, radius: 4.2, color: 0xffb347, tag: 'B' },
   { id: 'ex-sw', name: '西南撤离点', x: -72, z: 70, openAt: 300, radius: 4.2, color: 0xff6b5e, tag: 'C' }
 ];
+// 每张地图可覆盖撤离点布局（开放大地图把撤离点拉到边缘）
+DF.EXTRACT_DEFS_BY_MAP = {
+  frontier: [
+    { id: 'ex-n', name: '北部撤离点', x: 0, z: -140, openAt: 0,   radius: 4.2, color: 0x7dd069, tag: 'A' },
+    { id: 'ex-se', name: '东南撤离点', x: 136, z: 136, openAt: 150, radius: 4.2, color: 0xffb347, tag: 'B' },
+    { id: 'ex-sw', name: '西南撤离点', x: -136, z: 138, openAt: 300, radius: 4.2, color: 0xff6b5e, tag: 'C' }
+  ]
+};
+DF.getExtractDefs = function (mapId) {
+  return (mapId && DF.EXTRACT_DEFS_BY_MAP[mapId]) || DF.EXTRACT_DEFS;
+};
+
+/* 销毁当前撤离物资（容器 / 撤离点 / 标记），切换地图时重建 */
+DF.destroyExtractionWorld = function () {
+  const disposeTree = (root) => {
+    if (!root) return;
+    root.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+      }
+    });
+    if (DF.scene) DF.scene.remove(root);
+  };
+  if (DF.containers) DF.containers.forEach(c => {
+    disposeTree(c.mesh);
+    if (c.mark) {
+      if (DF.scene) DF.scene.remove(c.mark);
+      if (c.mark.geometry) c.mark.geometry.dispose();
+      if (c.mark.material) c.mark.material.dispose();
+    }
+  });
+  if (DF.extracts) DF.extracts.forEach(e => disposeTree(e.group));
+  DF.containers = [];
+  DF.containersById = {};
+  DF.extracts = [];
+  DF.searchMarkers = [];
+  DF.airdrop = null;
+};
 const EXTRACT_HOLD = 10;       // 需站住 10 秒
 const RAID_TIME = 720;         // 12 分钟
 
 DF.buildExtractionWorld = function (scene) {
+  const mapId = DF.mapId || 'base';
+  const extractDefs = DF.getExtractDefs(mapId);
   DF.containers = [];
   DF.containersById = {};
   DF.extracts = [];
@@ -190,7 +231,33 @@ DF.buildExtractionWorld = function (scene) {
     return c;
   };
 
-  /* 布置容器（贴合现有地图建筑） */
+  /* 布置容器（按地图分开布置，贴合各自建筑） */
+  if (mapId === 'frontier') {
+    // 边陲荒野：容器散布全图 320×320m，鼓励大范围搜索
+    // 西北谷仓（农舍）
+    addContainer('locker', -78, -44, 0.2); addContainer('locker', -74.5, -45, 0.2);
+    addContainer('safe', -76, -40.2, 0.4); addContainer('crate', -63, -41);
+    // 东北采石场
+    addContainer('crate', 55, -63); addContainer('crate', 66, -56); addContainer('safe', 71, -66, 1.2);
+    // 风车丘陵
+    addContainer('crate', 15, -84); addContainer('locker', 22, -92, 2.0);
+    // 瞭望塔（东）
+    addContainer('locker', 73, 28.5, 1.0); addContainer('crate', 80, 34);
+    // 南部废村
+    addContainer('locker', -46, 94, 0.4); addContainer('crate', -28, 109.5);
+    addContainer('safe', -15.5, 86.8, 0.9); addContainer('crate', -34, 98.5);
+    // 河畔营地（西）
+    addContainer('crate', -102, 40); addContainer('locker', -113, 52, 1.4);
+    // 卡车残骸
+    addContainer('crate', -19, -19); addContainer('locker', 111, -10, 0.6);
+    // 中央遗迹（高价值，全图争夺）
+    addContainer('safe', 4.5, -4, 0.3); addContainer('crate', -5, 3);
+    // 沿路与田野零散
+    addContainer('crate', 30, 22); addContainer('crate', -38, -28); addContainer('crate', 44, -34);
+    addContainer('locker', -8, 58); addContainer('crate', 52, 68); addContainer('crate', -68, 8);
+    addContainer('locker', 96, -32, 0.2); addContainer('crate', 16, 126);
+    addContainer('safe', -92, -84, 0.7); addContainer('locker', -128, -8, 0.2);
+  } else {
   // 仓库内部
   addContainer('locker', -56, -46, 0.2); addContainer('locker', -56, -42, 0.2);
   addContainer('crate', -46, -50); addContainer('crate', -44, -38);
@@ -210,8 +277,10 @@ DF.buildExtractionWorld = function (scene) {
   addContainer('crate', 22, -13); addContainer('crate', -16, -9);
   addContainer('locker', -62, -12, 1.2); addContainer('crate', 59, -22);
   addContainer('crate', -40, 45); addContainer('crate', 44, 46);
-  // 空投（局内第 5 分钟投放，初始隐藏）
-  const air = addContainer('airdrop', 0, -20);
+  }
+  // 空投（局内第 5 分钟投放，初始隐藏；开放大地图落点 = 地图中心遗迹）
+  const airSpot = mapId === 'frontier' ? [0, 0] : [0, -20];
+  const air = addContainer('airdrop', airSpot[0], airSpot[1]);
   air.pendingDrop = true;
   air.mesh.visible = false;
   air.mark.visible = false;
@@ -219,7 +288,7 @@ DF.buildExtractionWorld = function (scene) {
   DF.airdrop = air;
 
   /* ---------------- 撤离点 ---------------- */
-  DF.EXTRACT_DEFS.forEach(def => {
+  extractDefs.forEach(def => {
     const g = new T.Group();
     g.position.set(def.x, 0, def.z);
     // 地面光圈

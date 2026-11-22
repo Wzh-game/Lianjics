@@ -117,7 +117,7 @@ DF.init = function () {
 
   const scene = new T.Scene();
   DF.scene = scene;
-  const camera = new T.PerspectiveCamera(78, window.innerWidth / window.innerHeight, 0.05, 700);
+  const camera = new T.PerspectiveCamera(78, window.innerWidth / window.innerHeight, 0.05, 1000);   // 远平面需盖住天空球背面（开放大地图偏移大）
   camera.position.set(0, CFG.eye, 0);
   scene.add(camera);
   DF.camera = camera;
@@ -130,7 +130,7 @@ DF.init = function () {
     objects: scene.children.filter(o => !beforeWorld.has(o)),
     meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
     obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
-    fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone()
+    fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone(), half: CFG.mapHalf
   } };
   DF.Profile.load();
   DF.buildExtractionWorld(scene);
@@ -885,13 +885,14 @@ DF.respawn = function (p) {
   if (p.isLocal) DF.M.onLocalRespawn();
 };
 
-// 地图缓存仅包含场景静态几何；容器和撤离点在所有地图共享。
+// 地图缓存仅包含场景静态几何；容器和撤离点按地图布局，切换时重建。
 DF.applyMap = function (id) {
-  const validMaps = ['base', 'outpost', 'oilfield', 'urban', 'harbor'];
+  const validMaps = ['base', 'outpost', 'oilfield', 'urban', 'harbor', 'frontier'];
   id = validMaps.includes(id) ? id : 'base';
   if (DF.mapId === id) return;
   const old = DF.mapCache[DF.mapId];
   old.objects.forEach(o => DF.scene.remove(o));
+  DF.destroyExtractionWorld();
   let entry = DF.mapCache[id];
   if (!entry) {
     const before = new Set(DF.scene.children);
@@ -900,20 +901,23 @@ DF.applyMap = function (id) {
       objects: DF.scene.children.filter(o => !before.has(o)),
       meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
       obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
-      fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone()
+      fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone(), half: CFG.mapHalf
     };
   } else {
     entry.objects.forEach(o => DF.scene.add(o));
   }
   DF.scene.fog = entry.fog && entry.fog.clone();
   DF.scene.background = entry.background && entry.background.clone();
+  CFG.mapHalf = entry.half || 88;   // 恢复该地图的边界尺寸
   DF.worldMeshes = entry.meshes.slice();
-  DF.colliders = entry.colliders.concat(DF.lootColliders);
+  DF.colliders = entry.colliders.slice();
   DF.obstacleMeta = entry.obstacleMeta.slice();
   DF.spawns = entry.spawns.slice();
   DF.sun = entry.sun;
+  DF.mapId = id;   // 先切换地图 id，撤离物资按当前地图布置
+  DF.buildExtractionWorld(DF.scene);
+  DF.lootColliders = DF.colliders.slice(entry.colliders.length);
   DF.worldMeshes.forEach(m => m.updateMatrixWorld(true));
-  DF.mapId = id;
 };
 
 DF.resetRaidWorld = function () {
