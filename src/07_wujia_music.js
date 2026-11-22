@@ -1,6 +1,6 @@
 /* ============================================================
    吴家村专属小曲《十一笔》
-   累计击杀 100 人解锁；双击标题输入口令“老鼠”后播放
+   累计击杀 100 人解锁；填写名称“吴家村”并确认后播放
    ============================================================ */
 DF.WujiaMusic = (() => {
   const REQUIRED_KILLS = 100;
@@ -22,16 +22,11 @@ DF.WujiaMusic = (() => {
     const kills = getKills();
     const unlocked = kills >= REQUIRED_KILLS;
     const progress = document.getElementById('wujia-music-progress');
-    const button = getButton();
     const controls = document.getElementById('wujia-music-controls');
     if (progress) {
       progress.textContent = unlocked
-        ? '已解锁 · 累计击杀 ' + kills + ' 人 · 双击上方标题输入口令播放'
+        ? '已解锁 · 累计击杀 ' + kills + ' 人 · 输入名称“吴家村”并确定播放'
         : '累计击杀 ' + kills + ' / ' + REQUIRED_KILLS + ' · 还差 ' + (REQUIRED_KILLS - kills) + ' 人';
-    }
-    if (button) {
-      button.classList.toggle('hidden', !unlocked);
-      button.disabled = !unlocked;
     }
     if (controls) controls.classList.toggle('hidden', !unlocked);
     if (notify && unlocked && !wasUnlocked && typeof DF.toast === 'function') {
@@ -41,10 +36,17 @@ DF.WujiaMusic = (() => {
     return unlocked;
   }
 
-  async function requestPlayback() {
+  async function confirmNameAndPlay() {
     if (!refresh(false)) {
       const remaining = Math.max(0, REQUIRED_KILLS - getKills());
-      if (typeof DF.toast === 'function') DF.toast('吴家村秘曲尚未解锁，还需击杀 ' + remaining + ' 人（累计 100 人解锁）');
+      if (typeof DF.toast === 'function') DF.toast('还需累计击杀 ' + remaining + ' 人，达到 100 人后解锁');
+      return;
+    }
+    const input = document.getElementById('wujia-music-name');
+    const name = input ? input.value.trim() : '';
+    if (name !== '吴家村') {
+      if (typeof DF.toast === 'function') DF.toast('名称不正确，请填写“吴家村”');
+      if (input) { input.focus(); input.select(); }
       return;
     }
     const audio = getAudio();
@@ -52,17 +54,11 @@ DF.WujiaMusic = (() => {
       if (typeof DF.toast === 'function') DF.toast('音乐播放器未初始化，请刷新游戏后重试');
       return;
     }
-    const password = window.prompt('吴家村专属小曲《十一笔》\\n请输入播放口令：');
-    if (password === null) return;
-    if (password.trim() !== '老鼠') {
-      if (typeof DF.toast === 'function') DF.toast('口令不正确，无法播放《十一笔》');
-      return;
-    }
     authorized = true;
     try {
       await audio.play();
     } catch (err) {
-      if (typeof DF.toast === 'function') DF.toast('音乐暂时无法播放，请检查音频文件是否已上传');
+      if (typeof DF.toast === 'function') DF.toast('音乐暂时无法播放，请检查 assets/wujia-village-shiyibi.mp3 音频文件');
     }
   }
 
@@ -75,7 +71,7 @@ DF.WujiaMusic = (() => {
       return;
     }
     if (!authorized) {
-      if (typeof DF.toast === 'function') DF.toast('请双击“吴家村秘曲 ·《十一笔》”标题，并输入口令“老鼠”');
+      if (typeof DF.toast === 'function') DF.toast('请先填写名称“吴家村”，然后点击确定');
       return;
     }
     try {
@@ -95,7 +91,24 @@ DF.WujiaMusic = (() => {
       const controls = document.createElement('div');
       controls.id = 'wujia-music-controls';
       controls.className = 'hidden';
-      controls.style.cssText = 'display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px';
+      controls.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px';
+
+      const nameLabel = document.createElement('label');
+      nameLabel.textContent = '名称';
+      nameLabel.htmlFor = 'wujia-music-name';
+      nameLabel.style.cssText = 'font-size:12px;color:#c9b18b';
+      const nameInput = document.createElement('input');
+      nameInput.id = 'wujia-music-name';
+      nameInput.type = 'text';
+      nameInput.placeholder = '请输入吴家村';
+      nameInput.autocomplete = 'off';
+      nameInput.setAttribute('aria-label', '输入名称吴家村');
+      nameInput.style.cssText = 'width:132px;min-width:0;padding:7px 9px;border:1px solid #6b512b;border-radius:5px;background:#10150c;color:#fff;font:inherit;user-select:text';
+      const confirm = document.createElement('button');
+      confirm.id = 'wujia-music-confirm';
+      confirm.type = 'button';
+      confirm.textContent = '确定';
+      confirm.style.cssText = 'padding:7px 13px;border:1px solid #b17a35;border-radius:5px;background:#754313;color:#fff;font:inherit;cursor:pointer';
       const seek = document.createElement('input');
       seek.id = 'wujia-music-seek';
       seek.type = 'range';
@@ -103,62 +116,20 @@ DF.WujiaMusic = (() => {
       seek.max = '1000';
       seek.value = '0';
       seek.setAttribute('aria-label', '《十一笔》播放进度');
-      seek.style.cssText = 'flex:1 1 180px;min-width:150px;accent-color:#ffb347;cursor:pointer;touch-action:pan-x';
+      seek.style.cssText = 'flex:1 1 150px;min-width:120px;accent-color:#ffb347;cursor:pointer;touch-action:pan-x';
       const clock = document.createElement('span');
       clock.id = 'wujia-music-time';
       clock.textContent = '0:00 / 0:00';
       clock.style.cssText = 'font-size:11px;color:#c9b18b;font-variant-numeric:tabular-nums';
+
       button.style.cssText = 'position:static;top:auto;right:auto;z-index:auto;padding:7px 11px;font-size:12px;box-shadow:none';
-      controls.appendChild(button);
-      controls.appendChild(seek);
-      controls.appendChild(clock);
+      controls.append(nameLabel, nameInput, confirm, button, seek, clock);
       card.appendChild(controls);
 
-      // 标题双击：iOS 使用 touchend，桌面使用 dblclick，避免 iPad 合成 click 丢失。
-      const title = card.querySelector('.wm-title');
-      if (title) {
-        title.style.cssText += ';position:relative;z-index:2;display:block;min-height:28px;cursor:pointer;touch-action:manipulation;pointer-events:auto';
-        title.setAttribute('role', 'button');
-        title.setAttribute('tabindex', '0');
-        title.setAttribute('aria-label', '双击吴家村秘曲《十一笔》标题输入播放口令');
-        let lastTouchAt = 0;
-        let lastTouchPoint = null;
-        let promptPending = false;
-        const triggerPassword = () => {
-          if (promptPending) return;
-          promptPending = true;
-          Promise.resolve(requestPlayback()).finally(() => {
-            promptPending = false;
-            lastTouchAt = 0;
-            lastTouchPoint = null;
-          });
-        };
-        title.addEventListener('touchend', event => {
-          const touch = event.changedTouches && event.changedTouches[0];
-          if (!touch) return;
-          const now = Date.now();
-          const point = { x: touch.clientX, y: touch.clientY };
-          const closeToLast = lastTouchPoint &&
-            Math.hypot(point.x - lastTouchPoint.x, point.y - lastTouchPoint.y) <= 70;
-          if (lastTouchAt && now - lastTouchAt <= 700 && closeToLast) {
-            event.preventDefault();
-            triggerPassword();
-          } else {
-            lastTouchAt = now;
-            lastTouchPoint = point;
-          }
-        }, { passive: false });
-        title.addEventListener('dblclick', event => {
-          event.preventDefault();
-          triggerPassword();
-        });
-        title.addEventListener('keydown', event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            triggerPassword();
-          }
-        });
-      }
+      confirm.addEventListener('click', confirmNameAndPlay);
+      nameInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') confirmNameAndPlay();
+      });
       seek.addEventListener('input', () => {
         if (Number.isFinite(audio.duration) && audio.duration > 0) {
           audio.currentTime = (Number(seek.value) / 1000) * audio.duration;
@@ -194,7 +165,6 @@ DF.WujiaMusic = (() => {
       updateTimeline();
     }
 
-    // 战术档案在每局结算时累计本局击杀；包装原方法，避免改变既有资产结算逻辑。
     if (DF.Profile && !DF.Profile._wujiaMusicWrapped) {
       const load = DF.Profile.load.bind(DF.Profile);
       const addExtraction = DF.Profile.addExtraction.bind(DF.Profile);
@@ -219,7 +189,7 @@ DF.WujiaMusic = (() => {
     refresh(false);
   }
 
-  return { init, refresh, toggle, requestPlayback, requiredKills: REQUIRED_KILLS };
+  return { init, refresh, toggle, confirmNameAndPlay, requiredKills: REQUIRED_KILLS };
 })();
 
 DF.WujiaMusic.init();
