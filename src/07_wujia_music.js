@@ -140,10 +140,6 @@ DF.WujiaMusic = (() => {
           lastTitleTap = now;
           lastTitlePoint = point;
         });
-        title.addEventListener('dblclick', event => {
-          event.preventDefault();
-          triggerPassword();
-        });
         title.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
