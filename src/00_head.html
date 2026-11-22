@@ -417,7 +417,15 @@ body.touchmode #joystickHint{display:none}
     <div class="profbox" id="profile-box"></div>
     <div id="wujia-music-card">
       <div class="wm-title">吴家村秘曲 ·《十一笔》</div>
-      <div class="wm-progress" id="wujia-music-progress">累计击杀 0 / 100 · 尚未解锁</div>
+      <div class="wm-progress" id="wujia-music-progress">正在读取累计击杀记录…</div>
+      <div id="wujia-music-controls" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;position:relative;z-index:3;pointer-events:auto">
+        <label for="wujia-music-name" style="font-size:12px;color:#c9b18b">名称</label>
+        <input id="wujia-music-name" type="text" placeholder="请输入吴家村" autocomplete="off" aria-label="输入名称吴家村" style="width:132px;min-width:0;padding:7px 9px;border:1px solid #6b512b;border-radius:5px;background:#10150c;color:#fff;font:inherit;user-select:text;-webkit-user-select:text;pointer-events:auto">
+        <button id="wujia-music-confirm" type="button" style="padding:7px 13px;border:1px solid #b17a35;border-radius:5px;background:#754313;color:#fff;font:inherit;cursor:pointer;pointer-events:auto">确定</button>
+        <button id="wujia-music-btn" class="hidden" type="button" aria-label="播放或暂停吴家村专属小曲" style="position:static;padding:7px 11px;font-size:12px;box-shadow:none">🎵 播放《十一笔》</button>
+        <input id="wujia-music-seek" type="range" min="0" max="1000" value="0" aria-label="《十一笔》播放进度" style="flex:1 1 150px;min-width:120px;accent-color:#ffb347;cursor:pointer;touch-action:pan-x">
+        <span id="wujia-music-time" style="font-size:11px;color:#c9b18b;font-variant-numeric:tabular-nums">0:00 / 0:00</span>
+      </div>
     </div>
     <div class="legend">
       <span><i style="background:#ffc14a"></i>未搜索容器</span>
@@ -555,7 +563,6 @@ body.touchmode #joystickHint{display:none}
 </div>
 
 <audio id="wujia-village-track" src="assets/wujia-village-shiyibi.mp3" preload="none" loop></audio>
-<button id="wujia-music-btn" class="hidden" type="button" aria-label="播放或暂停吴家村专属小曲">🎵 播放《十一笔》</button>
 <div id="toast"></div>
 
 <script>
