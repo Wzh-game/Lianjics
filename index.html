@@ -5448,6 +5448,9 @@ DF.WujiaMusic = (() => {
       };
       DF.Profile._wujiaMusicWrapped = true;
     }
+    // 主菜单初始化时也要读取历史累计击杀，否则默认值会一直是 0，
+    // 玩家必须先开一局才会加载存档，导致音乐在菜单中误判未解锁。
+    if (DF.Profile && typeof DF.Profile.load === 'function') DF.Profile.load();
     refresh(false);
     updateTimeline();
   }
