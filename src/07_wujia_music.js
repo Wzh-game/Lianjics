@@ -42,9 +42,16 @@ DF.WujiaMusic = (() => {
   }
 
   async function requestPlayback() {
-    if (!refresh(false)) return;
+    if (!refresh(false)) {
+      const remaining = Math.max(0, REQUIRED_KILLS - getKills());
+      if (typeof DF.toast === 'function') DF.toast('吴家村秘曲尚未解锁，还需击杀 ' + remaining + ' 人（累计 100 人解锁）');
+      return;
+    }
     const audio = getAudio();
-    if (!audio) return;
+    if (!audio) {
+      if (typeof DF.toast === 'function') DF.toast('音乐播放器未初始化，请刷新游戏后重试');
+      return;
+    }
     const password = window.prompt('吴家村专属小曲《十一笔》\\n请输入播放口令：');
     if (password === null) return;
     if (password.trim() !== '老鼠') {
@@ -107,38 +114,43 @@ DF.WujiaMusic = (() => {
       controls.appendChild(clock);
       card.appendChild(controls);
 
-      // 双击标题输入口令。以 click 事件为主，兼容 iPad/iPhone Safari 的触屏点击。
+      // 标题双击：iOS 使用 touchend，桌面使用 dblclick，避免 iPad 合成 click 丢失。
       const title = card.querySelector('.wm-title');
       if (title) {
-        title.style.cursor = 'pointer';
-        title.style.touchAction = 'manipulation';
+        title.style.cssText += ';position:relative;z-index:2;display:block;min-height:28px;cursor:pointer;touch-action:manipulation;pointer-events:auto';
         title.setAttribute('role', 'button');
         title.setAttribute('tabindex', '0');
         title.setAttribute('aria-label', '双击吴家村秘曲《十一笔》标题输入播放口令');
-        let lastTitleTap = 0;
-        let lastTitlePoint = null;
+        let lastTouchAt = 0;
+        let lastTouchPoint = null;
         let promptPending = false;
         const triggerPassword = () => {
           if (promptPending) return;
           promptPending = true;
           Promise.resolve(requestPlayback()).finally(() => {
             promptPending = false;
-            lastTitleTap = 0;
-            lastTitlePoint = null;
+            lastTouchAt = 0;
+            lastTouchPoint = null;
           });
         };
-        title.addEventListener('click', event => {
+        title.addEventListener('touchend', event => {
+          const touch = event.changedTouches && event.changedTouches[0];
+          if (!touch) return;
           const now = Date.now();
-          const point = { x: event.clientX, y: event.clientY };
-          const closeToLast = lastTitlePoint &&
-            Math.hypot(point.x - lastTitlePoint.x, point.y - lastTitlePoint.y) <= 48;
-          if (lastTitleTap && now - lastTitleTap <= 650 && closeToLast) {
+          const point = { x: touch.clientX, y: touch.clientY };
+          const closeToLast = lastTouchPoint &&
+            Math.hypot(point.x - lastTouchPoint.x, point.y - lastTouchPoint.y) <= 70;
+          if (lastTouchAt && now - lastTouchAt <= 700 && closeToLast) {
             event.preventDefault();
             triggerPassword();
-            return;
+          } else {
+            lastTouchAt = now;
+            lastTouchPoint = point;
           }
-          lastTitleTap = now;
-          lastTitlePoint = point;
+        }, { passive: false });
+        title.addEventListener('dblclick', event => {
+          event.preventDefault();
+          triggerPassword();
         });
         title.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
