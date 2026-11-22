@@ -51,25 +51,39 @@ DF.Audio = {
 /* ---------------- 背景音乐：GitHub Pages 同目录文件 ---------------- */
 DF.Music = {
   audio: new Audio(), tracks: ['1.mp3', '2.mp3'], failed: new Set(),
-  current: '', started: false, playToken: 0,
+  current: '', started: false, playToken: 0, externalPriority: false,
   init() {
     this.audio.volume = 0.35;
     this.audio.preload = 'none';
-    this.audio.addEventListener('ended', () => { if (this.started) this.playRandom(); });
+    this.audio.addEventListener('ended', () => { if (this.started && !this.externalPriority) this.playRandom(); });
     this.audio.addEventListener('error', () => this.failCurrent(this.playToken));
     // 浏览器通常禁止无交互的有声自动播放，首次点击、触摸或按键时启动。
-    const unlock = () => { if (!this.started && this.failed.size < this.tracks.length) this.playRandom(); };
+    const unlock = () => {
+      if (!this.externalPriority && !this.started && this.failed.size < this.tracks.length) this.playRandom();
+    };
     document.addEventListener('pointerdown', unlock, true);
     document.addEventListener('touchstart', unlock, { capture: true, passive: true });
     document.addEventListener('keydown', unlock, true);
   },
+  pauseForExternal() {
+    this.externalPriority = true;
+    this.playToken++;
+    this.started = false;
+    this.audio.pause();
+  },
+  resumeAfterExternal() {
+    if (!this.externalPriority) return;
+    this.externalPriority = false;
+    if (this.failed.size < this.tracks.length) this.playRandom();
+  },
   failCurrent(token) {
-    if (token !== this.playToken || !this.current || this.failed.has(this.current)) return;
+    if (this.externalPriority || token !== this.playToken || !this.current || this.failed.has(this.current)) return;
     this.failed.add(this.current);
     this.started = false;
     if (this.failed.size < this.tracks.length) this.playRandom();
   },
   playRandom() {
+    if (this.externalPriority) return;
     const available = this.tracks.filter(name => !this.failed.has(name));
     if (!available.length) return;
     this.current = available[Math.floor(Math.random() * available.length)];
@@ -78,7 +92,7 @@ DF.Music = {
     this.audio.src = this.current;
     const playing = this.audio.play();
     if (playing && playing.catch) playing.catch(err => {
-      if (token !== this.playToken) return;
+      if (token !== this.playToken || this.externalPriority) return;
       if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) this.started = false;
       else this.failCurrent(token);
     });
