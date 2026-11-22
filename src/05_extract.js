@@ -115,9 +115,9 @@ DF.EXTRACT_DEFS = [
 // 每张地图可覆盖撤离点布局（开放大地图把撤离点拉到边缘）
 DF.EXTRACT_DEFS_BY_MAP = {
   frontier: [
-    { id: 'ex-n', name: '北部撤离点', x: 0, z: -140, openAt: 0,   radius: 4.2, color: 0x7dd069, tag: 'A' },
-    { id: 'ex-se', name: '东南撤离点', x: 136, z: 136, openAt: 150, radius: 4.2, color: 0xffb347, tag: 'B' },
-    { id: 'ex-sw', name: '西南撤离点', x: -136, z: 138, openAt: 300, radius: 4.2, color: 0xff6b5e, tag: 'C' }
+    { id: 'ex-n', name: '北部撤离点', x: 0, z: -1465, openAt: 0,   radius: 4.2, color: 0x7dd069, tag: 'A' },
+    { id: 'ex-se', name: '东南撤离点', x: 1425, z: 1425, openAt: 500, radius: 4.2, color: 0xffb347, tag: 'B' },
+    { id: 'ex-sw', name: '西南撤离点', x: -1425, z: 1445, openAt: 1000, radius: 4.2, color: 0xff6b5e, tag: 'C' }
   ]
 };
 DF.getExtractDefs = function (mapId) {
@@ -233,26 +233,30 @@ DF.buildExtractionWorld = function (scene) {
 
   /* 布置容器（按地图分开布置，贴合各自建筑） */
   if (mapId === 'frontier') {
-    // 吴家村 · 开放大地图：容器贴地标布置（机场/吴家村/集市/军事基地/工业区 + 野外）
-    // 北部机场：机库、塔台、残骸客机
-    addContainer('crate', -32, -97); addContainer('safe', 18, -93, 0.4);
-    addContainer('locker', 44.5, -96.5, 1.6); addContainer('crate', 12, -112.5);
+    // 吴家村 · 开放大地图（3000×3000m）：容器贴地标布置
+    // 北部机场（z≈-1150）：机库、塔台、残骸客机
+    addContainer('crate', -32, -1129); addContainer('safe', 18, -1125, 0.4);
+    addContainer('locker', 44.5, -1128.5, 1.6); addContainer('crate', 12, -1144.5);
     // 吴家村：民居、祠堂、村口
     addContainer('crate', -13, 6.5); addContainer('locker', 12, 4.5, 0.4);
     addContainer('safe', 0, 13.5, 2.0); addContainer('crate', 7.5, -16);
-    // 河畔集市
-    addContainer('locker', -56, 24.5, 0.2); addContainer('crate', -43, 33); addContainer('safe', -49, 36, 1.8);
-    // 废弃军事基地
-    addContainer('locker', 99, 1.5, 0.1); addContainer('crate', 106, 19.5); addContainer('safe', 112, -4.8, 0.9);
-    // 西南工业区
-    addContainer('safe', -108, 83, 0.3); addContainer('crate', -92.5, 99);
-    addContainer('locker', -112, 100, 1.2); addContainer('crate', -100, 74);
-    // 野外零散
-    addContainer('crate', -128, -58); addContainer('locker', 60, -58);
-    addContainer('crate', 24, 84); addContainer('locker', -30, -88);
-    addContainer('crate', 140, -48); addContainer('crate', 16, 126);
-    addContainer('locker', -128, -8); addContainer('safe', 118, 120, 0.6);
-    addContainer('crate', -64, -136);
+    // 河畔集市（-480, 170）
+    addContainer('locker', -490, 164.5, 0.2); addContainer('crate', -477, 173); addContainer('safe', -483, 176, 1.8);
+    // 废弃军事基地（980, 28）
+    addContainer('locker', 976, 19.5, 0.1); addContainer('crate', 983, 37.5); addContainer('safe', 989, 13.2, 0.9);
+    // 西南工业区（-950, 786）
+    addContainer('safe', -950, 779, 0.3); addContainer('crate', -934.5, 795);
+    addContainer('locker', -954, 796, 1.2); addContainer('crate', -942, 770);
+    // 高岭村 / 边境哨站 / 东南物流站 / 南郊村落
+    addContainer('crate', 1052, -738); addContainer('locker', -1145, -848, 0.7);
+    addContainer('safe', 1150, 958, 0.5); addContainer('crate', 1140, 944); addContainer('crate', -318, 1155);
+    // 野外零散（按 ~4.5× 放大散布）
+    addContainer('crate', -576, -260); addContainer('locker', 270, -260);
+    addContainer('crate', 108, 380); addContainer('locker', -135, -400);
+    addContainer('crate', 630, -215); addContainer('crate', 72, 570);
+    addContainer('locker', -575, -35); addContainer('safe', 530, 540, 0.6);
+    addContainer('crate', -290, -610); addContainer('crate', -1200, -400);
+    addContainer('locker', 1250, -200, 1.1); addContainer('crate', 0, -800); addContainer('safe', -700, 1200, 0.9);
   } else {
   // 仓库内部
   addContainer('locker', -56, -46, 0.2); addContainer('locker', -56, -42, 0.2);
@@ -274,7 +278,7 @@ DF.buildExtractionWorld = function (scene) {
   addContainer('locker', -62, -12, 1.2); addContainer('crate', 59, -22);
   addContainer('crate', -40, 45); addContainer('crate', 44, 46);
   }
-  // 空投（局内第 5 分钟投放，初始隐藏；吴家村落点 = 村中心广场）
+  // 空投（局内第 15 分钟投放，初始隐藏；吴家村落点 = 村中心广场）
   const airSpot = mapId === 'frontier' ? [2, 22] : [0, -20];   // 吴家村：空投落村中心
   const air = addContainer('airdrop', airSpot[0], airSpot[1]);
   air.pendingDrop = true;
@@ -320,6 +324,8 @@ DF.buildExtractionWorld = function (scene) {
       open: false, progress: 0, holder: null, holding: []
     });
   });
+  // 容器/空投向 DF.colliders 追加了碰撞盒：重建空间哈希
+  if (DF.rebuildColliderGrid) DF.rebuildColliderGrid();
 };
 
 /* 撤离点动画（每帧） */

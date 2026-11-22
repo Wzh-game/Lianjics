@@ -373,11 +373,11 @@ Net._tick = function () {
 
   // 撤离点 / 搜刮权威结算
   if (DF.matchRunning && !DF.matchOver) {
-    if (DF.airdrop && DF.airdrop.pendingDrop && DF.matchTime >= 300) {
+    if (DF.airdrop && DF.airdrop.pendingDrop && DF.matchTime >= (CFG.airdropAt || 300)) {
       DF.airdrop.pendingDrop = false;
       DF.airdrop.mesh.visible = true;
       DF.airdrop.mark.visible = true;
-      DF.pushKillfeed('<span style="color:#ff8c1a">✈ 空投已投放（地图中央）</span>');
+      DF.pushKillfeed('<span style="color:#ff8c1a">' + (DF.mapId === 'frontier' ? '✈ 空投已投放（吴家村村中心）' : '✈ 空投已投放（地图中央）') + '</span>');
       this.hostBroadcast({ t: 'drop', x: DF.airdrop.x, z: DF.airdrop.z });
     }
   }
@@ -562,7 +562,7 @@ Net._guestHandle = function (m) {
         DF.airdrop.mesh.visible = true;
         DF.airdrop.mark.visible = true;
       }
-      DF.pushKillfeed('<span style="color:#ff8c1a">✈ 空投已投放（地图中央）</span>');
+      DF.pushKillfeed('<span style="color:#ff8c1a">' + (DF.mapId === 'frontier' ? '✈ 空投已投放（吴家村村中心）' : '✈ 空投已投放（地图中央）') + '</span>');
       break;
     }
     case 'end': DF.M.onRemoteEnd && DF.M.onRemoteEnd(m.id, m.reason); break;

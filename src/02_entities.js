@@ -535,9 +535,10 @@ DF.updateBot = function (bot, dt) {
       const d = p.pos.distanceTo(bot.pos);
       if (d < nd) { nd = d; nearest = p; }
     });
-    if (nearest && nd < 62) {
+    const sight = DF.sightRange || 62;
+    if (nearest && nd < sight) {
       bot.botTargetPlayer = nearest.id;
-      bot.botState = nd < 40 ? 'attack' : 'chase';
+      bot.botState = nd < sight * 0.65 ? 'attack' : 'chase';
     } else {
       bot.botState = 'roam';
       if (!bot.botTarget || bot.pos.distanceTo(bot.botTarget) < 4 || Math.random() < 0.25) {

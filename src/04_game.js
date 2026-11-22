@@ -117,7 +117,7 @@ DF.init = function () {
 
   const scene = new T.Scene();
   DF.scene = scene;
-  const camera = new T.PerspectiveCamera(78, window.innerWidth / window.innerHeight, 0.05, 1000);   // 远平面需盖住天空球背面（开放大地图偏移大）
+  const camera = new T.PerspectiveCamera(78, window.innerWidth / window.innerHeight, 0.05, 2600);   // 远平面需盖住开放大地图的天空球与远山
   camera.position.set(0, CFG.eye, 0);
   scene.add(camera);
   DF.camera = camera;
@@ -951,7 +951,7 @@ DF.startSolo = function () {
   DF.players.set('local', me);
   DF.attachMesh(me, DF.scene);
   DF.spawnPlayer(me);
-  const botN = 7;
+  const botN = (DF.mapId === 'frontier' ? 12 : 7);   // 开放大地图bot更密集
   for (let i = 0; i < botN; i++) {
     const b = DF.createPlayer({
       id: 'bot' + i, name: CFG.botNames[i % CFG.botNames.length], isBot: true,
@@ -1016,11 +1016,11 @@ DF.startSoloExtractLoop = function () {
     if (DF.mode !== 'single' || !DF.matchRunning || DF.matchOver || DF.paused) return;
     DF.updateExtractionLogic && DF.updateExtractionLogic(0.1);
     DF.checkRaidOver && DF.checkRaidOver();
-    if (DF.airdrop && DF.airdrop.pendingDrop && DF.matchTime >= 300) {
+    if (DF.airdrop && DF.airdrop.pendingDrop && DF.matchTime >= (CFG.airdropAt || 300)) {
       DF.airdrop.pendingDrop = false;
       DF.airdrop.mesh.visible = true;
       DF.airdrop.mark.visible = true;
-      DF.pushKillfeed('<span style="color:#ff8c1a">✈ 空投已投放（地图中央）</span>');
+      DF.pushKillfeed('<span style="color:#ff8c1a">' + (DF.mapId === 'frontier' ? '✈ 空投已投放（吴家村村中心）' : '✈ 空投已投放（地图中央）') + '</span>');
       DF.Audio.warn && DF.Audio.warn();
     }
   }, 100);
@@ -1354,24 +1354,44 @@ DF.drawMinimap = function () {
   const cv = document.getElementById('minimap');
   const g = cv.getContext('2d');
   const W = cv.width, H = cv.height;
-  const R = CFG.mapHalf + 4;
+  const localView = CFG.mapHalf > 220;   // 开放大地图：以本人为中心 ±160m 局部缩放
+  const me = DF.players.get(DF.myId);
+  const cx = localView && me ? me.pos.x : 0;
+  const cz = localView && me ? me.pos.z : 0;
+  const R = localView ? 160 : CFG.mapHalf + 4;
   const sc = W / (R * 2);
-  const toX = x => (x + R) * sc;
-  const toY = z => (z + R) * sc;
+  const toX = x => (x - cx + R) * sc;
+  const toY = z => (z - cz + R) * sc;
   g.clearRect(0, 0, W, H);
   g.fillStyle = 'rgba(24,30,20,.9)';
   g.fillRect(0, 0, W, H);
-  // 网格
+  // 网格（局部缩放时按 50m 一格并标注坐标）
   g.strokeStyle = 'rgba(120,140,100,.15)'; g.lineWidth = 1;
-  for (let i = 0; i <= 8; i++) {
-    const p = (i / 8) * W;
-    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, H); g.stroke();
-    g.beginPath(); g.moveTo(0, p); g.lineTo(W, p); g.stroke();
+  if (localView) {
+    g.font = '8px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+    const step = 50;
+    for (let gx = Math.floor((cx - R) / step) * step; gx <= cx + R; gx += step) {
+      const p = toX(gx);
+      g.beginPath(); g.moveTo(p, 0); g.lineTo(p, H); g.stroke();
+      g.fillStyle = 'rgba(160,180,140,.5)'; g.fillText(String(Math.round(gx)), p + 2, 2);
+    }
+    for (let gz = Math.floor((cz - R) / step) * step; gz <= cz + R; gz += step) {
+      const p = toY(gz);
+      g.beginPath(); g.moveTo(0, p); g.lineTo(W, p); g.stroke();
+      g.fillStyle = 'rgba(160,180,140,.5)'; g.fillText(String(Math.round(gz)), 2, p + 2);
+    }
+  } else {
+    for (let i = 0; i <= 8; i++) {
+      const p = (i / 8) * W;
+      g.beginPath(); g.moveTo(p, 0); g.lineTo(p, H); g.stroke();
+      g.beginPath(); g.moveTo(0, p); g.lineTo(W, p); g.stroke();
+    }
   }
   // 障碍
   g.fillStyle = 'rgba(150,170,130,.55)';
   for (const o of DF.obstacleMeta) {
     if (o.h < 0.6) continue;
+    if (localView && (o.x + o.w / 2 < cx - R || o.x - o.w / 2 > cx + R || o.z + o.d / 2 < cz - R || o.z - o.d / 2 > cz + R)) continue;
     g.fillRect(toX(o.x - o.w / 2), toY(o.z - o.d / 2), Math.max(1, o.w * sc), Math.max(1, o.d * sc));
   }
   // 未搜索容器
@@ -1396,6 +1416,25 @@ DF.drawMinimap = function () {
       g.fillText(ex.tag, x, y + 0.5);
     }
   }
+  // 局部缩放：场外撤离点方向箭头（三角 + 标签 + 距离）
+  if (localView) {
+    for (const ex of DF.extracts || []) {
+      const dx = ex.x - cx, dz = ex.z - cz;
+      const dist = Math.hypot(dx, dz);
+      if (dist <= R - 12) continue;  // 屏幕内已直接绘制
+      const nx = dx / dist, ny = dz / dist;
+      const ax = W / 2 + nx * (W / 2 - 12), ay = H / 2 + ny * (H / 2 - 12);
+      g.save();
+      g.translate(ax, ay);
+      g.rotate(Math.atan2(ny, nx) + Math.PI / 2);
+      g.fillStyle = ex.open ? '#7dd069' : 'rgba(150,160,140,.7)';
+      g.beginPath(); g.moveTo(0, -5); g.lineTo(4, 4); g.lineTo(-4, 4); g.closePath(); g.fill();
+      g.restore();
+      g.fillStyle = ex.open ? '#dfffd0' : '#8a927e';
+      g.font = 'bold 7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(ex.tag + ' ' + Math.round(dist), ax, ay + (ny >= 0 ? 9 : -9));
+    }
+  }
   // 玩家
   DF.players.forEach(p => {
     if (!p.alive) return;
@@ -1412,6 +1451,13 @@ DF.drawMinimap = function () {
     }
   });
   // 边框刻度
+  if (localView) {
+    // 北向箭头 + 比例尺
+    g.fillStyle = '#ff8c1a'; g.font = 'bold 9px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillText('N↑', W - 16, 11);
+    g.fillStyle = 'rgba(232,236,221,.55)'; g.font = '8px sans-serif';
+    g.fillText('±160m', 4, H - 4);
+  }
   g.strokeStyle = 'rgba(255,179,71,.5)';
   g.strokeRect(0.5, 0.5, W - 1, H - 1);
 };
@@ -1700,7 +1746,8 @@ DF.loop = function (ts) {
 
   if (!DF.matchRunning) {
     DF.idleCamera(dt);
-    DF.renderer.render(DF.scene, DF.camera);
+    DF.updateSkySun();
+  DF.renderer.render(DF.scene, DF.camera);
     DF.autoQuality();
     return;
   }
@@ -1715,7 +1762,8 @@ DF.loop = function (ts) {
     // 暂停时只渲染，不推进本地操作
     DF.players.forEach(p => { if (p.mesh) DF.updateCharacter(p, dt); });
     DF.fx.update(dt);
-    DF.renderer.render(DF.scene, DF.camera);
+    DF.updateSkySun();
+  DF.renderer.render(DF.scene, DF.camera);
     return;
   }
   DF.updateLocalPlayer(dt);
@@ -1757,6 +1805,7 @@ DF.loop = function (ts) {
   DF.fx.update(dt);
   DF._hudDt = dt;
   DF.updateHUD();
+  DF.updateSkySun();
   DF.renderer.render(DF.scene, DF.camera);
   DF.autoQuality();
 };
