@@ -1,6 +1,6 @@
 # 三角洲行动 · 网页联机版（DELTA FORCE · WEB OPS）
 
-# (https://wzh131213-dev.github.io/Lianjics/)
+# **(https://wzh131213-dev.github.io/Lianjics/)**
 
 3D 第一人称战术射击游戏，纯浏览器运行，**单文件、零依赖、无需安装**。
 联机采用 **WebRTC DataChannel + 房主权威（host-authoritative）** 架构。
