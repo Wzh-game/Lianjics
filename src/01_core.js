@@ -4,7 +4,7 @@
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.4.0';
+DF.VERSION = '1.4.2';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1009,7 +1009,7 @@ DF.initWorld = function (scene, mapId) {
       let x = 0, z = 0, t = 0;
       do { x = rndF() * 2920 - 1460; z = rndF() * 2920 - 1460; } while ((!isClear(x, z, 3) || onRoad(x, z)) && ++t < 6);
       const bs = 0.5 + rndF() * 0.9;
-      DF.colliders.push({ circle: true, x, z, r: bs * 0.85, miny: 0, maxy: bs * 0.95 });
+      // 灌木可穿过（不注册碰撞体）
       _be.set(0, rndF() * 3, 0); _bq.setFromEuler(_be);
       _bs.set(bs, bs * 0.7, bs); _bp.set(x, bs * 0.55, z);
       _bm.compose(_bp, _bq, _bs); bushIM.setMatrixAt(i, _bm);
@@ -1062,6 +1062,9 @@ DF.initWorld = function (scene, mapId) {
     frontier: [{x:-1350,z:-1350},{x:1350,z:-1350},{x:-1350,z:60},{x:1350,z:60},{x:-1350,z:1350},{x:1350,z:1350},{x:-350,z:1400},{x:350,z:-1400},{x:-900,z:-1380},{x:900,z:1380},{x:-1400,z:600},{x:1400,z:-800},{x:-600,z:1400},{x:600,z:-1400},{x:0,z:-880}]
   };
   DF.spawns = spawnSets[mapId] || spawnSets.base;
+
+  // 载具（按地图固定出生点；随地图缓存进出场景）
+  if (DF.spawnMapVehicles) DF.spawnMapVehicles(scene, mapId);
 
   DF.worldMeshes.forEach(m => { m.updateMatrixWorld(true); });
   DF.rebuildColliderGrid();

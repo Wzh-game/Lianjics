@@ -130,6 +130,7 @@ DF.init = function () {
     objects: scene.children.filter(o => !beforeWorld.has(o)),
     meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
     obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
+    vehicles: DF.worldVehicles ? DF.worldVehicles.slice() : [],
     fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone(), half: CFG.mapHalf
   } };
   DF.Profile.load();
@@ -906,11 +907,13 @@ DF.applyMap = function (id) {
       objects: DF.scene.children.filter(o => !before.has(o)),
       meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
       obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
+      vehicles: DF.worldVehicles ? DF.worldVehicles.slice() : [],
       fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone(), half: CFG.mapHalf
     };
   } else {
     entry.objects.forEach(o => DF.scene.add(o));
   }
+  DF.vehicles = entry.vehicles ? entry.vehicles.slice() : [];
   DF.scene.fog = entry.fog && entry.fog.clone();
   DF.scene.background = entry.background && entry.background.clone();
   CFG.mapHalf = entry.half || 88;   // 恢复该地图的边界尺寸
@@ -926,6 +929,8 @@ DF.applyMap = function (id) {
 };
 
 DF.resetRaidWorld = function () {
+  if (DF.exitVehicle) DF.exitVehicle(true);
+  if (DF.vehicles) DF.vehicles.forEach(v => { v.speed = 0; });
   if (DF.containers) DF.containers.forEach(c => {
     if (c.pendingDrop) { c.mesh.visible = false; c.mark.visible = false; return; }
     c.searched = false; c.searchedBy = null; c.mark.visible = true;
@@ -1034,6 +1039,7 @@ DF.startSoloExtractLoop = function () {
 /* 每局启动前清理上一局残留的暂停、输入和结算状态。
    避免移动端触控/键盘状态或旧遮罩让第二局看起来像卡死。 */
 DF.resetRoundInputState = function () {
+  if (DF.exitVehicle) DF.exitVehicle(true);
   const I = DF.input || (DF.input = {});
   I.keys = {};
   I.fire = false; I.ads = false; I.reload = false;
@@ -1101,6 +1107,7 @@ DF.beginPlay = function () {
 };
 
 DF.quitToMenu = function () {
+  if (DF.exitVehicle) DF.exitVehicle(true);
   DF.matchRunning = false;
   DF.matchOver = false;
   DF.showHUD(false);
@@ -1651,11 +1658,12 @@ DF.updateLocalPlayer = function (dt) {
   }
 
   const input = DF.buildInput();
+  const moveFn = DF.driveVehicle ? DF.driveVehicleUpdate : DF.applyMovement;
   if (DF.mode === 'guest') {
     DF.applyMovement(me, input, dt);
     DF.net.sendInput(input, me.yaw, me.pitch, null);
   } else {
-    DF.applyMovement(me, input, dt);
+    moveFn(me, input, dt);
     DF.net && DF.net.role === 'host' && DF.net.hostBroadcast && null;
   }
   I.jumpQueued = false;
@@ -1669,16 +1677,23 @@ DF.updateLocalPlayer = function (dt) {
   }
 
   // 摄像机
-  const eye = me.crouch ? CFG.crouchEye : CFG.eye;
+  const driving = !!DF.driveVehicle;
+  const eye = driving ? 1.92 : (me.crouch ? CFG.crouchEye : CFG.eye);
   const speed = Math.hypot(me.vel.x, me.vel.z);
-  DF.bobT += dt * speed * 1.5;
-  const bobAmt = Math.min(1, speed / CFG.walk) * (me.onGround ? 1 : 0) * (me.ads ? 0.35 : 1);
+  DF.bobT += dt * speed * (driving ? 0 : 1.5);
+  const bobAmt = (driving ? 0 : Math.min(1, speed / CFG.walk)) * (me.onGround ? 1 : 0) * (me.ads ? 0.35 : 1);
   const bobY = Math.sin(DF.bobT * 2) * 0.028 * bobAmt;
   const bobX = Math.cos(DF.bobT) * 0.022 * bobAmt;
   // 触屏宽屏：相机略微下移抬高视角，使枪身落在画面下缘留白处
   const wideCam = DF.touch.enabled ? clamp((DF.camera.aspect - 1.72) / 0.45, 0, 1) * 0.22 : 0;
-  const wantY = me.pos.y + eye + bobY + wideCam * 0.11;
-  DF.camera.position.lerp(new T.Vector3(me.pos.x + bobX * 0.3, wantY, me.pos.z), Math.min(1, dt * 22));
+  const wantY = me.pos.y + eye + bobY + wideCam * 0.11 + (driving ? Math.sin(DF.time * 9) * Math.min(0.03, Math.abs(DF.driveVehicle.speed) * 0.0022) : 0);
+  if (driving) {
+    const hv = DF.driveVehicle;
+    const hx = -Math.sin(hv.heading), hz = -Math.cos(hv.heading);
+    DF.camera.position.lerp(new T.Vector3(me.pos.x + hx * 0.5, wantY, me.pos.z + hz * 0.5), Math.min(1, dt * 22));
+  } else {
+    DF.camera.position.lerp(new T.Vector3(me.pos.x + bobX * 0.3, wantY, me.pos.z), Math.min(1, dt * 22));
+  }
   DF.camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
 
   // 视图模型动画
@@ -1737,7 +1752,7 @@ DF.updateLocalPlayer = function (dt) {
   // 准星
   const ch = document.getElementById('crosshair');
   ch.style.opacity = me.ads ? 0.15 : 1;
-  const spreadPx = 6 + (me.ads ? -3 : Math.hypot(me.vel.x, me.vel.z) * 1.3);
+  const spreadPx = 6 + (me.ads ? -3 : Math.hypot(me.vel.x, me.vel.z) * (driving ? 0.55 : 1.3));
   ch.style.transform = `translate(-50%,-50%) scale(${1 + spreadPx / 40})`;
 };
 
@@ -1774,6 +1789,7 @@ DF.loop = function (ts) {
     return;
   }
   DF.updateLocalPlayer(dt);
+  if (DF.updateVehicles) DF.updateVehicles(dt);
 
   // 更新所有角色网格
   DF.players.forEach(p => {

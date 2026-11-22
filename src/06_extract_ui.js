@@ -124,6 +124,10 @@ DF.tryInteract = function () {
   const me = DF.players.get(DF.myId);
   if (!me || !me.alive) return;
   if (me.searching) return;
+  // 载具优先：车内→下车；车旁→上车
+  if (DF.driveVehicle) { DF.exitVehicle(); return; }
+  const nv = DF.nearestVehicle ? DF.nearestVehicle(me, 2.6) : null;
+  if (nv) { DF.enterVehicle(nv); return; }
   const near = DF.nearestContainer(me, 3.2);
   if (near) { DF.startSearch(near); return; }
   DF.toast('附近没有可搜索的容器');

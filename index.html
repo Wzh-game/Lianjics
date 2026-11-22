@@ -687,7 +687,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.4.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.4.2</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -884,7 +884,7 @@ body.touchmode #joystickHint{display:none}
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.4.0';
+DF.VERSION = '1.4.2';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1889,7 +1889,7 @@ DF.initWorld = function (scene, mapId) {
       let x = 0, z = 0, t = 0;
       do { x = rndF() * 2920 - 1460; z = rndF() * 2920 - 1460; } while ((!isClear(x, z, 3) || onRoad(x, z)) && ++t < 6);
       const bs = 0.5 + rndF() * 0.9;
-      DF.colliders.push({ circle: true, x, z, r: bs * 0.85, miny: 0, maxy: bs * 0.95 });
+      // 灌木可穿过（不注册碰撞体）
       _be.set(0, rndF() * 3, 0); _bq.setFromEuler(_be);
       _bs.set(bs, bs * 0.7, bs); _bp.set(x, bs * 0.55, z);
       _bm.compose(_bp, _bq, _bs); bushIM.setMatrixAt(i, _bm);
@@ -1942,6 +1942,9 @@ DF.initWorld = function (scene, mapId) {
     frontier: [{x:-1350,z:-1350},{x:1350,z:-1350},{x:-1350,z:60},{x:1350,z:60},{x:-1350,z:1350},{x:1350,z:1350},{x:-350,z:1400},{x:350,z:-1400},{x:-900,z:-1380},{x:900,z:1380},{x:-1400,z:600},{x:1400,z:-800},{x:-600,z:1400},{x:600,z:-1400},{x:0,z:-880}]
   };
   DF.spawns = spawnSets[mapId] || spawnSets.base;
+
+  // 载具（按地图固定出生点；随地图缓存进出场景）
+  if (DF.spawnMapVehicles) DF.spawnMapVehicles(scene, mapId);
 
   DF.worldMeshes.forEach(m => { m.updateMatrixWorld(true); });
   DF.rebuildColliderGrid();
@@ -3685,6 +3688,7 @@ DF.init = function () {
     objects: scene.children.filter(o => !beforeWorld.has(o)),
     meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
     obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
+    vehicles: DF.worldVehicles ? DF.worldVehicles.slice() : [],
     fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone(), half: CFG.mapHalf
   } };
   DF.Profile.load();
@@ -4461,11 +4465,13 @@ DF.applyMap = function (id) {
       objects: DF.scene.children.filter(o => !before.has(o)),
       meshes: DF.worldMeshes.slice(), colliders: DF.colliders.slice(),
       obstacleMeta: DF.obstacleMeta.slice(), spawns: DF.spawns.slice(), sun: DF.sun,
+      vehicles: DF.worldVehicles ? DF.worldVehicles.slice() : [],
       fog: DF.scene.fog && DF.scene.fog.clone(), background: DF.scene.background && DF.scene.background.clone(), half: CFG.mapHalf
     };
   } else {
     entry.objects.forEach(o => DF.scene.add(o));
   }
+  DF.vehicles = entry.vehicles ? entry.vehicles.slice() : [];
   DF.scene.fog = entry.fog && entry.fog.clone();
   DF.scene.background = entry.background && entry.background.clone();
   CFG.mapHalf = entry.half || 88;   // 恢复该地图的边界尺寸
@@ -4481,6 +4487,8 @@ DF.applyMap = function (id) {
 };
 
 DF.resetRaidWorld = function () {
+  if (DF.exitVehicle) DF.exitVehicle(true);
+  if (DF.vehicles) DF.vehicles.forEach(v => { v.speed = 0; });
   if (DF.containers) DF.containers.forEach(c => {
     if (c.pendingDrop) { c.mesh.visible = false; c.mark.visible = false; return; }
     c.searched = false; c.searchedBy = null; c.mark.visible = true;
@@ -4589,6 +4597,7 @@ DF.startSoloExtractLoop = function () {
 /* 每局启动前清理上一局残留的暂停、输入和结算状态。
    避免移动端触控/键盘状态或旧遮罩让第二局看起来像卡死。 */
 DF.resetRoundInputState = function () {
+  if (DF.exitVehicle) DF.exitVehicle(true);
   const I = DF.input || (DF.input = {});
   I.keys = {};
   I.fire = false; I.ads = false; I.reload = false;
@@ -4656,6 +4665,7 @@ DF.beginPlay = function () {
 };
 
 DF.quitToMenu = function () {
+  if (DF.exitVehicle) DF.exitVehicle(true);
   DF.matchRunning = false;
   DF.matchOver = false;
   DF.showHUD(false);
@@ -5206,11 +5216,12 @@ DF.updateLocalPlayer = function (dt) {
   }
 
   const input = DF.buildInput();
+  const moveFn = DF.driveVehicle ? DF.driveVehicleUpdate : DF.applyMovement;
   if (DF.mode === 'guest') {
     DF.applyMovement(me, input, dt);
     DF.net.sendInput(input, me.yaw, me.pitch, null);
   } else {
-    DF.applyMovement(me, input, dt);
+    moveFn(me, input, dt);
     DF.net && DF.net.role === 'host' && DF.net.hostBroadcast && null;
   }
   I.jumpQueued = false;
@@ -5224,16 +5235,23 @@ DF.updateLocalPlayer = function (dt) {
   }
 
   // 摄像机
-  const eye = me.crouch ? CFG.crouchEye : CFG.eye;
+  const driving = !!DF.driveVehicle;
+  const eye = driving ? 1.92 : (me.crouch ? CFG.crouchEye : CFG.eye);
   const speed = Math.hypot(me.vel.x, me.vel.z);
-  DF.bobT += dt * speed * 1.5;
-  const bobAmt = Math.min(1, speed / CFG.walk) * (me.onGround ? 1 : 0) * (me.ads ? 0.35 : 1);
+  DF.bobT += dt * speed * (driving ? 0 : 1.5);
+  const bobAmt = (driving ? 0 : Math.min(1, speed / CFG.walk)) * (me.onGround ? 1 : 0) * (me.ads ? 0.35 : 1);
   const bobY = Math.sin(DF.bobT * 2) * 0.028 * bobAmt;
   const bobX = Math.cos(DF.bobT) * 0.022 * bobAmt;
   // 触屏宽屏：相机略微下移抬高视角，使枪身落在画面下缘留白处
   const wideCam = DF.touch.enabled ? clamp((DF.camera.aspect - 1.72) / 0.45, 0, 1) * 0.22 : 0;
-  const wantY = me.pos.y + eye + bobY + wideCam * 0.11;
-  DF.camera.position.lerp(new T.Vector3(me.pos.x + bobX * 0.3, wantY, me.pos.z), Math.min(1, dt * 22));
+  const wantY = me.pos.y + eye + bobY + wideCam * 0.11 + (driving ? Math.sin(DF.time * 9) * Math.min(0.03, Math.abs(DF.driveVehicle.speed) * 0.0022) : 0);
+  if (driving) {
+    const hv = DF.driveVehicle;
+    const hx = -Math.sin(hv.heading), hz = -Math.cos(hv.heading);
+    DF.camera.position.lerp(new T.Vector3(me.pos.x + hx * 0.5, wantY, me.pos.z + hz * 0.5), Math.min(1, dt * 22));
+  } else {
+    DF.camera.position.lerp(new T.Vector3(me.pos.x + bobX * 0.3, wantY, me.pos.z), Math.min(1, dt * 22));
+  }
   DF.camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
 
   // 视图模型动画
@@ -5292,7 +5310,7 @@ DF.updateLocalPlayer = function (dt) {
   // 准星
   const ch = document.getElementById('crosshair');
   ch.style.opacity = me.ads ? 0.15 : 1;
-  const spreadPx = 6 + (me.ads ? -3 : Math.hypot(me.vel.x, me.vel.z) * 1.3);
+  const spreadPx = 6 + (me.ads ? -3 : Math.hypot(me.vel.x, me.vel.z) * (driving ? 0.55 : 1.3));
   ch.style.transform = `translate(-50%,-50%) scale(${1 + spreadPx / 40})`;
 };
 
@@ -5329,6 +5347,7 @@ DF.loop = function (ts) {
     return;
   }
   DF.updateLocalPlayer(dt);
+  if (DF.updateVehicles) DF.updateVehicles(dt);
 
   // 更新所有角色网格
   DF.players.forEach(p => {
@@ -6145,6 +6164,10 @@ DF.tryInteract = function () {
   const me = DF.players.get(DF.myId);
   if (!me || !me.alive) return;
   if (me.searching) return;
+  // 载具优先：车内→下车；车旁→上车
+  if (DF.driveVehicle) { DF.exitVehicle(); return; }
+  const nv = DF.nearestVehicle ? DF.nearestVehicle(me, 2.6) : null;
+  if (nv) { DF.enterVehicle(nv); return; }
   const near = DF.nearestContainer(me, 3.2);
   if (near) { DF.startSearch(near); return; }
   DF.toast('附近没有可搜索的容器');
@@ -6696,6 +6719,291 @@ DF.WujiaMusic.init();
   }
 
   window.addEventListener('DOMContentLoaded', init);
+})();
+
+
+/* ============================================================
+   载具系统 v1（三角洲行动风格皮卡/轻型突击车）
+   - 每张地图固定出生点（随地图缓存进出场景）
+   - 靠近按 F 上车；F 下车（右侧门）；WASD 驾驶，A/D 转向
+   - 鼠标视角独立（车内环视）；方向键油门时速度显示 km/h
+   - 碰撞：圆形载具 vs 世界 AABB/圆形碰撞（经 DF.collideMove）
+   - 单人/房主可驾驶；联机客人暂不可驾驶（房间主机权威，v1 限制）
+   ============================================================ */
+(function () {
+  'use strict';
+  if (typeof DF === 'undefined') return;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  /* ---------------- 车辆模型（低多边形风格） ---------------- */
+  DF.makeVehicle = function () {
+    const T_ = T;
+    const g = new T.Group();
+    const olive = new T_.MeshStandardMaterial({ color: 0x46512f, roughness: 0.72, metalness: 0.18, flatShading: true });
+    const oliveD = new T_.MeshStandardMaterial({ color: 0x323b22, roughness: 0.8, metalness: 0.12, flatShading: true });
+    const glass = new T_.MeshStandardMaterial({ color: 0x1d2f38, roughness: 0.22, metalness: 0.65 });
+    const dark = new T_.MeshStandardMaterial({ color: 0x1c1f18, roughness: 0.6, metalness: 0.35 });
+    const tire = new T_.MeshStandardMaterial({ color: 0x141512, roughness: 0.95 });
+    const rim = new T_.MeshStandardMaterial({ color: 0x8f8a76, roughness: 0.35, metalness: 0.7 });
+    const light = new T_.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffdf8a, emissiveIntensity: 0.55 });
+    const tail = new T_.MeshStandardMaterial({ color: 0xff4433, emissive: 0x881111, emissiveIntensity: 0.8 });
+
+    const add = (geo, mat, x, y, z) => {
+      const m = new T_.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.castShadow = true; m.receiveShadow = true;
+      g.add(m);
+      return m;
+    };
+    // 底盘（车头朝 -Z）
+    add(new T_.BoxGeometry(2.0, 0.52, 4.15), olive, 0, 0.78, 0);
+    // 车头（机舱盖）
+    add(new T_.BoxGeometry(1.86, 0.34, 1.05), olive, 0, 1.10, -1.52);
+    // 驾驶室
+    add(new T_.BoxGeometry(1.88, 0.66, 1.95), olive, 0, 1.32, -0.42);
+    // 挡风玻璃（前倾）
+    const ws = add(new T_.BoxGeometry(1.68, 0.46, 0.07), glass, 0, 1.42, -1.38);
+    ws.rotation.x = 0.32;
+    // 车顶
+    add(new T_.BoxGeometry(1.98, 0.12, 2.0), oliveD, 0, 1.70, -0.42);
+    // 车厢（开放式）前壁
+    add(new T_.BoxGeometry(1.9, 0.34, 0.1), oliveD, 0, 1.20, 0.66);
+    // 车厢侧壁
+    add(new T_.BoxGeometry(0.1, 0.34, 1.5), oliveD, -0.92, 1.20, 1.38);
+    add(new T_.BoxGeometry(0.1, 0.34, 1.5), oliveD, 0.92, 1.20, 1.38);
+    // 车厢后壁
+    add(new T_.BoxGeometry(1.9, 0.34, 0.1), oliveD, 0, 1.20, 2.10);
+    // 防撞保险杠（前/后）
+    add(new T_.BoxGeometry(2.06, 0.22, 0.16), dark, 0, 0.66, -2.16);
+    add(new T_.BoxGeometry(2.06, 0.22, 0.16), dark, 0, 0.66, 2.16);
+    // 车顶机枪架（无武器，外观点）
+    add(new T_.BoxGeometry(0.34, 0.1, 0.34), dark, 0, 1.80, -0.15);
+    // 天线
+    const ant = add(new T_.CylinderGeometry(0.02, 0.02, 1.35, 6), dark, 0.82, 2.35, 0.45);
+    ant.castShadow = false;
+    // 大灯 ×2 / 尾灯 ×2
+    add(new T_.BoxGeometry(0.34, 0.12, 0.06), light, -0.62, 0.98, -2.085).castShadow = false;
+    add(new T_.BoxGeometry(0.34, 0.12, 0.06), light, 0.62, 0.98, -2.085).castShadow = false;
+    add(new T_.BoxGeometry(0.30, 0.10, 0.06), tail, -0.62, 0.98, 2.085).castShadow = false;
+    add(new T_.BoxGeometry(0.30, 0.10, 0.06), tail, 0.62, 0.98, 2.085).castShadow = false;
+
+    // 车轮（前轮可视转向）
+    const wheels = [];
+    const frontAxle = [];
+    const wheelDefs = [
+      { x: -1.02, z: -1.32, front: true }, { x: 1.02, z: -1.32, front: true },
+      { x: -1.02, z: 1.34, front: false }, { x: 1.02, z: 1.34, front: false }
+    ];
+    wheelDefs.forEach(d => {
+      const pivot = new T_.Group();          // 转向（yaw）
+      pivot.position.set(d.x, 0.46, d.z);
+      const spinner = new T_.Group();        // 滚动（绕轴 x）
+      const w = new T_.Mesh(new T_.CylinderGeometry(0.46, 0.46, 0.34, 14), tire);
+      w.rotation.z = Math.PI / 2;
+      w.castShadow = true;
+      const rimM = new T_.Mesh(new T_.CylinderGeometry(0.2, 0.2, 0.36, 10), rim);
+      rimM.rotation.z = Math.PI / 2;
+      spinner.add(w, rimM);
+      pivot.add(spinner);
+      g.add(pivot);
+      wheels.push(spinner);
+      if (d.front) frontAxle.push(pivot);
+    });
+    // 备胎
+    const spare = new T_.Mesh(new T_.CylinderGeometry(0.4, 0.4, 0.24, 12), tire);
+    spare.position.set(0, 1.32, 2.18); spare.rotation.x = Math.PI / 2; spare.castShadow = true;
+    g.add(spare);
+
+    g.userData = { wheels, frontAxle, wheelSpin: 0 };
+    return g;
+  };
+
+  /* ---------------- 每张地图的出生点 ---------------- */
+  const SPAWNS = {
+    base: [[16, 10]],
+    outpost: [[13, -15]],
+    oilfield: [[15, 9]],
+    urban: [[-15, 11]],
+    harbor: [[19, 7]],
+    frontier: [[12, 15], [4, -1132]]
+  };
+
+  const MAXV = 23, ACC = 10.5, REV = 8.5, R_ACC = 7.5;
+
+  DF.spawnMapVehicles = function (scene, mapId) {
+    DF.worldVehicles = [];
+    const spots = SPAWNS[mapId] || [];
+    spots.forEach(([sx, sz], i) => {
+      // 出生点自动避让静态碰撞（推出半径取 2.2m，保证出生不被卡住）
+      const pv = { x: sx, y: 0, z: sz };
+      DF.collideMove(pv, 2.2);
+      const x = pv.x, z = pv.z;
+      const mesh = DF.makeVehicle();
+      const heading = i === 0 ? Math.PI * 0.12 : 0;
+      mesh.position.set(x, 0, z);
+      mesh.rotation.y = heading;
+      scene.add(mesh);
+      const v = {
+        id: 'veh' + i, mesh, x, z, y: 0, heading, speed: 0,
+        radius: 1.8, occupied: false
+      };
+      mesh.userData.vehicle = v;
+      DF.worldVehicles.push(v);
+    });
+    DF.vehicles = DF.worldVehicles.slice();
+  };
+
+  /* 地图缓存包装：applyMap 会在切换地图时恢复/隐藏载具 */
+  DF.applyVehiclesCache = function (entry, isNew) {
+    if (!entry) return;
+    if (isNew && DF.worldVehicles) entry.vehicles = DF.worldVehicles.slice();
+    DF.vehicles = entry.vehicles ? entry.vehicles.slice() : [];
+  };
+
+  /* ---------------- 上/下车 ---------------- */
+  DF.nearestVehicle = function (me, maxD) {
+    if (!DF.vehicles) return null;
+    let best = null, bd = maxD || 2.6;
+    for (const v of DF.vehicles) {
+      const d = Math.hypot(me.pos.x - v.x, me.pos.z - v.z);
+      if (d < bd) { bd = d; best = v; }
+    }
+    return best;
+  };
+
+  DF.enterVehicle = function (v) {
+    const me = DF.players.get(DF.myId);
+    if (!me || !me.alive) return;
+    if (DF.mode === 'guest') { DF.toast('联机时载具仅房主可驾驶'); return; }
+    if (v.occupied) { DF.toast('载具已被占用'); return; }
+    v.occupied = true;
+    DF.driveVehicle = v;
+    me.yaw = v.heading;
+    me.vel.set(0, 0, 0);
+    me.sprint = false; me.crouch = false;
+    DF.toast('已上车 — WASD 驾驶 / A·D 转向 / F 下车');
+  };
+
+  DF.exitVehicle = function (silent) {
+    const v = DF.driveVehicle;
+    if (!v) return;
+    const me = DF.players.get(DF.myId);
+    v.occupied = false;
+    v.speed = 0;
+    // 右侧下车
+    const fx = -Math.sin(v.heading), fz = -Math.cos(v.heading);
+    const rx = -fz, rz = fx;
+    const p = { x: v.x + rx * 2.6, y: 0, z: v.z + rz * 2.6 };
+    DF.collideMove(p, CFG.radius);
+    if (me) {
+      me.pos.set(p.x, 0, p.z);
+      me.vel.set(0, 0, 0);
+      me.vy = 0;
+    }
+    DF.driveVehicle = null;
+    if (!silent) DF.toast('已下车');
+  };
+
+  /* ---------------- 驾驶物理 + 相机占位 ----------------
+     在 applyMovement 原位替换：旋转方向盘并沿车头方向推进。 */
+  DF.driveVehicleUpdate = function (p, input, dt) {
+    const v = DF.driveVehicle;
+    if (!v) { DF.applyMovement(p, input, dt); return; }
+    if (!p.alive) { DF.exitVehicle(true); p.vel.set(0, 0, 0); return; }
+    p.sprint = false; p.crouch = false;
+    const throttle = clamp(input.f || 0, -1, 1);
+    // 油门 / 刹车 / 倒车
+    if (throttle > 0) v.speed += ACC * throttle * dt;
+    else if (throttle < 0) {
+      if (v.speed > 0.6) v.speed += R_ACC * throttle * dt;      // 制动
+      else v.speed += ACC * 0.68 * throttle * dt;                // 倒车
+    } else {
+      v.speed *= Math.max(0, 1 - 1.65 * dt);                      // 滑行阻尼
+      if (Math.abs(v.speed) < 0.15) v.speed = 0;
+    }
+    v.speed = clamp(v.speed, -REV, MAXV);
+    // 转向（低速不转、倒车镜像）
+    const grip = clamp(Math.abs(v.speed) / 6.5, 0, 1);
+    const dir = v.speed >= 0 ? 1 : -1;
+    v.heading -= (input.s || 0) * 1.55 * grip * dir * dt;
+    // 位移 + 碰撞
+    const fx = -Math.sin(v.heading), fz = -Math.cos(v.heading);
+    v.x += fx * v.speed * dt;
+    v.z += fz * v.speed * dt;
+    const preX = v.x, preZ = v.z;
+    const pv = { x: v.x, y: 0, z: v.z };
+    DF.collideMove(pv, v.radius);
+    const impact = Math.hypot(pv.x - preX, pv.z - preZ);
+    v.x = pv.x; v.z = pv.z;
+    // 同步车体与玩家实体
+    v.mesh.position.set(v.x, 0, v.z);
+    v.mesh.rotation.y = v.heading;   // 模型车头 -Z，与玩家 yaw 约定一致
+    p.pos.set(v.x, 0, v.z);
+    p.vel.set(fx * v.speed, 0, fz * v.speed);
+    p.vy = 0; p.onGround = true;
+    p.sprint = false;
+    // 撞击减速
+    if (impact > 0.02) v.speed *= (1 - clamp(impact * 1.4, 0.18, 0.5));
+    // 车轮滚动 + 前轮转向可视
+    const ud = v.mesh.userData;
+    ud.wheelSpin += (v.speed / 0.46) * dt;
+    ud.wheels.forEach(w => { w.rotation.x = ud.wheelSpin; });
+    const steerVis = clamp(input.s || 0, -1, 1) * 0.42;
+    ud.frontAxle.forEach(w => { w.rotation.y = lerp(w.rotation.y, -steerVis, Math.min(1, dt * 10)); });
+  };
+
+  /* ---------------- 每帧：提示 HUD / 车与人的挤压 ---------------- */
+  let hintEl = null;
+  function getHint() {
+    if (hintEl) return hintEl;
+    const hud = document.getElementById('hud');
+    if (!hud) return null;
+    hintEl = document.createElement('div');
+    hintEl.id = 'vehicle-hint';
+    hintEl.style.cssText = 'position:absolute;left:50%;bottom:118px;transform:translateX(-50%);' +
+      'background:rgba(10,14,8,.78);border:1px solid #4a5a38;border-left:3px solid #ff8c1a;' +
+      'color:#ffe9b0;font-size:13px;letter-spacing:2px;padding:7px 16px;display:none;white-space:nowrap;z-index:5;';
+    hud.appendChild(hintEl);
+    return hintEl;
+  }
+
+  DF.updateVehicles = function (dt) {
+    if (!DF.vehicles) return;
+    const me = DF.players.get(DF.myId);
+    // 玩家-车体挤压（未驾驶时）
+    if (me && me.alive && !DF.driveVehicle) {
+      for (const v of DF.vehicles) {
+        const dx = me.pos.x - v.x, dz = me.pos.z - v.z;
+        const rr = v.radius + CFG.radius * 0.6;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < rr * rr && d2 > 1e-6) {
+          const d = Math.sqrt(d2);
+          me.pos.x = v.x + (dx / d) * rr;
+          me.pos.z = v.z + (dz / d) * rr;
+        }
+      }
+    }
+    // 提示条
+    const hint = getHint();
+    if (hint) {
+      if (DF.driveVehicle) {
+        const kmh = Math.round(Math.abs(DF.driveVehicle.speed) * 3.6);
+        hint.textContent = `🚗 ${kmh} km/h · F 下车`;
+        hint.style.display = 'block';
+      } else if (me && me.alive && DF.matchRunning && !DF.paused) {
+        const nv = DF.nearestVehicle(me, 2.6);
+        if (nv) {
+          hint.textContent = '按 F 上车 · 突击车';
+          hint.style.display = 'block';
+        } else {
+          hint.style.display = 'none';
+        }
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+  };
 })();
 
 </script>
