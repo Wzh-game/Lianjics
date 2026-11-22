@@ -4,7 +4,7 @@
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.3.0';
+DF.VERSION = '1.3.1';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -604,6 +604,50 @@ DF.initWorld = function (scene, mapId) {
     // 道路净空：南北干道 x=8、东西干道 z=-6、南线 z=60、机场连接线 z=-1150
     const onRoad = (x, z) => Math.abs(x - 8) < 10 || Math.abs(z + 6) < 10 || Math.abs(z - 60) < 9 || Math.abs(z + 1150) < 9;
 
+    // ============ 山体（全部实体：圆形碰撞体积；大山不是背景）============
+    const mtnMatsF = [
+      new T.MeshStandardMaterial({ color: 0x6b7261, roughness: 1, flatShading: true }),
+      new T.MeshStandardMaterial({ color: 0x5f6858, roughness: 1, flatShading: true }),
+      new T.MeshStandardMaterial({ color: 0x767c6a, roughness: 1, flatShading: true })
+    ];
+    const mtnKeep = [];
+    const mtnRnd = mulberry32(20261124);
+    const addMountain = (x, z, rad, h) => {
+      const cone = new T.Mesh(new T.ConeGeometry(rad, h, 7 + Math.floor(mtnRnd() * 3)), mtnMatsF[Math.floor(mtnRnd() * 3)]);
+      cone.position.set(x, h / 2 - 5, z);
+      cone.rotation.y = mtnRnd() * 3;
+      cone.castShadow = true; cone.receiveShadow = true; scene.add(cone);
+      DF.colliders.push({ circle: true, x, z, r: rad * 0.9, miny: 0, maxy: h - 5 });
+      DF.obstacleMeta.push({ x, z, w: rad * 1.8, d: rad * 1.8, h: h * 0.7 });
+      mtnKeep.push([x, z, rad + 14]);
+      // 主峰旁的侧峰（同样实体）
+      if (mtnRnd() < 0.55) {
+        const sr = rad * 0.55, sh = h * 0.68;
+        const sx = x + (mtnRnd() - 0.5) * rad * 1.1, sz = z + (mtnRnd() - 0.5) * rad * 1.1;
+        const c2 = new T.Mesh(new T.ConeGeometry(sr, sh, 6 + Math.floor(mtnRnd() * 3)), mtnMatsF[Math.floor(mtnRnd() * 3)]);
+        c2.position.set(sx, sh / 2 - 5, sz); c2.rotation.y = mtnRnd() * 3;
+        c2.castShadow = true; c2.receiveShadow = true; scene.add(c2);
+        DF.colliders.push({ circle: true, x: sx, z: sz, r: sr * 0.9, miny: 0, maxy: sh - 5 });
+        mtnKeep.push([sx, sz, sr + 14]);
+      }
+    };
+    // 三座命名大山（地标）：大沟顶(东北) / 黑风山(西) / 白云顶(南)
+    addMountain(1150, -350, 150, 175);   // 大沟顶
+    addMountain(-1200, 380, 165, 185);   // 黑风山
+    addMountain(420, 1250, 140, 165);    // 白云顶
+    // 边缘环山（实体，遮挡地图边界；避开出生点/撤离点）
+    const _msp = [[-1350,-1350],[1350,-1350],[-1350,60],[1350,60],[-1350,1350],[1350,1350],[-350,1400],[350,-1400],[-900,-1380],[900,1380],[-1400,600],[1400,-800],[-600,1400],[600,-1400],[0,-880]];
+    const _mex = [[0,-1465],[1425,1425],[-1425,1445]];
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2 + (mtnRnd() - 0.5) * 0.26;
+      const rr = 1300 + mtnRnd() * 135;
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      if (_msp.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 255)) continue;
+      if (_mex.some(([ex, ez]) => Math.hypot(ex - x, ez - z) < 215)) continue;
+      addMountain(x, z, 120 + mtnRnd() * 55, 95 + mtnRnd() * 65);
+    }
+    keepClear.push.apply(keepClear, mtnKeep);   // 散布/森林避让山体
+
     // —— 小型结构助手 ——
     function hayBale(x, z) {
       const m = new T.Mesh(new T.CylinderGeometry(1.05, 1.05, 1.55, 12), hayMat);
@@ -963,8 +1007,9 @@ DF.initWorld = function (scene, mapId) {
     const _bm = new T.Matrix4(), _bq = new T.Quaternion(), _bp = new T.Vector3(), _bs = new T.Vector3(), _be = new T.Euler();
     for (let i = 0; i < BUSH; i++) {
       let x = 0, z = 0, t = 0;
-      do { x = rndF() * 2920 - 1460; z = rndF() * 2920 - 1460; } while (!isClear(x, z, 3) && ++t < 6);
+      do { x = rndF() * 2920 - 1460; z = rndF() * 2920 - 1460; } while ((!isClear(x, z, 3) || onRoad(x, z)) && ++t < 6);
       const bs = 0.5 + rndF() * 0.9;
+      DF.colliders.push({ circle: true, x, z, r: bs * 0.85, miny: 0, maxy: bs * 0.95 });
       _be.set(0, rndF() * 3, 0); _bq.setFromEuler(_be);
       _bs.set(bs, bs * 0.7, bs); _bp.set(x, bs * 0.55, z);
       _bm.compose(_bp, _bq, _bs); bushIM.setMatrixAt(i, _bm);
@@ -974,30 +1019,36 @@ DF.initWorld = function (scene, mapId) {
     fence(-30, 44, 16, 'x'); fence(34, 30, 12, 'y'); fence(-58, 52, 12, 'x');
   }
 
-  // ===== 远处山体剪影（装饰）=====
+  // ===== 远处山体（实体碰撞体积；地图外最远环山不可达，但同样登记碰撞）=====
   const mtnMats = [
     new T.MeshStandardMaterial({ color: 0x6b7261, roughness: 1, flatShading: true }),
     new T.MeshStandardMaterial({ color: 0x5f6858, roughness: 1, flatShading: true }),
     new T.MeshStandardMaterial({ color: 0x767c6a, roughness: 1, flatShading: true })
   ];
-  const mtnCount = mapId === 'frontier' ? 72 : 26;
-  const mtnNear = mapId === 'frontier' ? 1750 : 230;
-  const mtnFar = mapId === 'frontier' ? 2450 : 340;
-  for (let i = 0; i < mtnCount; i++) {
-    const a = (i / mtnCount) * Math.PI * 2 + rnd(-0.1, 0.1);
-    const r = rnd(mtnNear, mtnFar);
-    const h = mapId === 'frontier' ? rnd(70, 150) : rnd(38, 96);
-    const rad = mapId === 'frontier' ? rnd(90, 165) : rnd(55, 105);
-    const cone = new T.Mesh(new T.ConeGeometry(rad, h, rndInt(6, 9)), mtnMats[i % 3]);
-    cone.position.set(Math.cos(a) * r, h / 2 - 26, Math.sin(a) * r);
-    cone.rotation.y = Math.random() * 3;
-    cone.scale.set(rnd(0.8, 1.5), rnd(0.8, 1.2), rnd(0.8, 1.5));
-    scene.add(cone);
-    // 山脊装饰
-    if (Math.random() < 0.5) {
-      const c2 = new T.Mesh(new T.ConeGeometry(rad * 0.55, h * 0.7, 6), mtnMats[(i + 1) % 3]);
-      c2.position.set(Math.cos(a) * r + rnd(-40, 40), h * 0.35 - 26, Math.sin(a) * r + rnd(-40, 40));
-      scene.add(c2);
+  if (mapId === 'frontier') {
+    // 天际线山脊（地图外 1750~2350m，远眺层次，登记实体）
+    for (let i = 0; i < 44; i++) {
+      const a = (i / 44) * Math.PI * 2 + rnd(-0.1, 0.1);
+      const r = rnd(1760, 2350);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const h = rnd(80, 160), rad = rnd(95, 165);
+      const cone = new T.Mesh(new T.ConeGeometry(rad, h, rndInt(6, 9)), mtnMats[i % 3]);
+      cone.position.set(x, h / 2 - 26, z); cone.rotation.y = Math.random() * 3; scene.add(cone);
+      DF.colliders.push({ circle: true, x, z, r: rad * 0.9, miny: 0, maxy: h - 26 });
+    }
+  } else {
+    // 其他地图：远景山脊（实体）
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2 + rnd(-0.1, 0.1);
+      const r = rnd(230, 340);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const h = rnd(38, 96), rad = rnd(55, 105);
+      const cone = new T.Mesh(new T.ConeGeometry(rad, h, rndInt(6, 9)), mtnMats[i % 3]);
+      cone.position.set(x, h / 2 - 26, z);
+      cone.rotation.y = Math.random() * 3;
+      cone.scale.set(rnd(0.8, 1.5), rnd(0.8, 1.2), rnd(0.8, 1.5));
+      scene.add(cone);
+      DF.colliders.push({ circle: true, x, z, r: rad * 1.5, miny: 0, maxy: h - 26 });
     }
   }
 
@@ -1029,8 +1080,10 @@ DF.rebuildColliderGrid = function () {
   for (let i = 0; i < arr.length; i++) {
     const c = arr[i];
     c._q = 0;
-    const x0 = Math.floor(c.minx * inv), x1 = Math.floor(c.maxx * inv);
-    const z0 = Math.floor(c.minz * inv), z1 = Math.floor(c.maxz * inv);
+    const bx0 = c.circle ? c.x - c.r : c.minx, bx1 = c.circle ? c.x + c.r : c.maxx;
+    const bz0 = c.circle ? c.z - c.r : c.minz, bz1 = c.circle ? c.z + c.r : c.maxz;
+    const x0 = Math.floor(bx0 * inv), x1 = Math.floor(bx1 * inv);
+    const z0 = Math.floor(bz0 * inv), z1 = Math.floor(bz1 * inv);
     for (let gx = x0; gx <= x1; gx++) {
       for (let gz = z0; gz <= z1; gz++) {
         const key = gx + ',' + gz;
@@ -1064,6 +1117,20 @@ DF.collideMove = function (pos, radius) {
     c._q = stamp;
     if (c.maxy < feet + 0.45) continue;      // 比抬腿高度矮：可通过
     if (c.miny > feet + 1.75) continue;      // 在头顶之上
+    if (c.circle) {                          // 圆形碰撞（山体/灌木）
+      const dx = pos.x - c.x, dz = pos.z - c.z;
+      const rr = c.r + radius;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= rr * rr) continue;
+      const d = Math.sqrt(d2);
+      if (d > 1e-6) {
+        pos.x = c.x + (dx / d) * rr;
+        pos.z = c.z + (dz / d) * rr;
+      } else {
+        pos.x = c.x + rr;   // 恰好在圆心：向任意方向推出
+      }
+      continue;
+    }
     let cx = pos.x, cz = pos.z;
     const nx = clamp(cx, c.minx, c.maxx);
     const nz = clamp(cz, c.minz, c.maxz);

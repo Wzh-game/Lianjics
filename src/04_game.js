@@ -856,6 +856,10 @@ DF.spawnPlayer = function (p) {
   // 安全落位：若仍卡在实体内，向四周寻找空位
   const stuck = () => {
     for (const c of DF.colliders) {
+      if (c.circle) {
+        if (Math.hypot(p.pos.x - c.x, p.pos.z - c.z) < c.r + CFG.radius * 0.5 && c.maxy > 1.2) return true;
+        continue;
+      }
       if (p.pos.x > c.minx - CFG.radius * 0.5 && p.pos.x < c.maxx + CFG.radius * 0.5 &&
           p.pos.z > c.minz - CFG.radius * 0.5 && p.pos.z < c.maxz + CFG.radius * 0.5 &&
           c.maxy > 1.2) return true;

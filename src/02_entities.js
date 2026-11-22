@@ -709,6 +709,11 @@ DF.applyMovement = function (p, input, dt) {
   for (let i = 0; i < DF.colliders.length; i++) {
     const cd = DF.colliders[i];
     if (cd.maxy > 1.4) continue; // 只允许踩上矮物体
+    if (cd.circle) {
+      const d = Math.hypot(p.pos.x - cd.x, p.pos.z - cd.z);
+      if (d < cd.r + 0.25 && cd.maxy <= p.pos.y + 0.35 && cd.maxy > standY) standY = cd.maxy;
+      continue;
+    }
     if (p.pos.x > cd.minx - 0.25 && p.pos.x < cd.maxx + 0.25 &&
         p.pos.z > cd.minz - 0.25 && p.pos.z < cd.maxz + 0.25 &&
         cd.maxy <= p.pos.y + 0.35 && cd.maxy > standY) {
