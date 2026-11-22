@@ -137,6 +137,7 @@ DF.init = function () {
   DF.lootColliders = DF.colliders.slice(DF.mapCache.base.colliders.length);
   DF.createEffects(scene);
   DF.createViewModel(camera);
+  DF.spawnMenuActor(scene);
   DF.net = new DF.Net();
 
   // 输入状态
@@ -1068,6 +1069,7 @@ DF.resetRoundInputState = function () {
 };
 
 DF.beginPlay = function () {
+  if (DF.menuActor) DF.menuActor.visible = false;
   // 重新开局必须从干净状态开始，不依赖刷新页面清理旧状态。
   if (DF.lootOpen && DF.closeLootUI) DF.closeLootUI();
   DF.resetRoundInputState();
@@ -1109,6 +1111,7 @@ DF.quitToMenu = function () {
   I_unlock();
   DF.cleanupNet();
   DF.resetPlayers();
+  if (DF.menuActor) DF.menuActor.visible = true;
   DF.show('menu');
   DF.updateHostPlayers();
 };
@@ -1864,12 +1867,38 @@ DF.autoQuality = function () {
   }
 };
 
+/* 菜单角色「驻村人」：三角洲行动风格大厅的 3D 主角 */
+DF.spawnMenuActor = function (scene) {
+  const actor = DF.makeCharacter(0x424f2c);
+  actor.position.set(0.5, 0, 2.5);
+  actor.scale.set(1.18, 1.18, 1.18);
+  actor.rotation.y = Math.PI * 0.85;
+  if (actor.userData && actor.userData.label) actor.userData.label.visible = false;
+  scene.add(actor);
+  DF.menuActor = actor;
+};
+
 DF.idleCamera = function (dt) {
-  // 菜单背景缓慢环绕
-  DF.idleT = (DF.idleT || 0) + dt * 0.08;
-  const r = 62;
-  DF.camera.position.set(Math.cos(DF.idleT) * r, 24 + Math.sin(DF.idleT * 0.7) * 6, Math.sin(DF.idleT) * r);
-  DF.camera.lookAt(0, 2, 0);
+  // 菜单大厅：围绕驻村人缓慢环绕（Delta Force Key-art 视角）
+  DF.idleT = (DF.idleT || 0) + dt * 0.17;
+  const ax = 0.5, az = 2.5, ar = 2.35;
+  const px = ax + Math.cos(DF.idleT) * ar, pz = az + Math.sin(DF.idleT) * ar;
+  DF.camera.position.set(px, 1.34 + Math.sin(DF.idleT * 0.6) * 0.15, pz);
+  // 目标点左移，令角色位于画面右侧（Delta Force 主视觉构图）
+  const fx = ax - px, fz = az - pz, fl = Math.hypot(fx, fz);
+  const rx = -fz / fl, rz = fx / fl;
+  const shift = 1.02;
+  DF.camera.lookAt(ax - rx * shift, 1.24, az - rz * shift);
+  const actor = DF.menuActor;
+  if (actor) {
+    // 始终面向镜头 + 缓慢呼吸起伏
+    actor.rotation.y = Math.atan2(-(DF.camera.position.x - ax), -(DF.camera.position.z - az));
+    const ud = actor.userData;
+    ud.walkPhase = (ud.walkPhase || 0) + dt * 1.55;
+    actor.position.y = Math.sin(ud.walkPhase) * 0.028;
+    if (ud.torso) ud.torso.scale.y = 1 + Math.sin(ud.walkPhase) * 0.022;
+    actor.rotation.z = Math.sin(ud.walkPhase * 0.5) * 0.012;
+  }
   if (DF.viewModel) DF.viewModel.visible = false;
 };
 

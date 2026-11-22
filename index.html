@@ -392,58 +392,360 @@ body.touchmode #joystickHint{display:none}
   <button class="btn primary" id="btn-force-landscape">强制全屏并继续</button>
 </div>
 
-<!-- ============ 主菜单 ============ -->
-<div id="menu" class="screen">
-  <div class="panel">
-    <h1 class="logo">三角洲行动<span class="en">DELTA FORCE · WEB OPS</span></h1>
-    <div class="sub">3D 战术射击 · 搜物资 / 打交火 / 撤出生天 · 阵亡丢失背包，保险箱保留</div>
-    <div><span class="badge">WebRTC DataChannel</span><span class="badge">房主权威 Host-Authoritative</span><span class="badge">P2P 直连 · 无需服务器</span></div>
-    <label class="lab">你的呼号（昵称）</label>
-    <input type="text" id="name-input" maxlength="12" style="width:260px">
-    <label class="lab" for="map-select">选择地图</label>
-    <select id="map-select" aria-label="选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option><option value="oilfield">沙漠油田 · 储油罐与采油机</option><option value="urban">废弃城区 · 破楼与街巷</option><option value="harbor">临海港口 · 货柜与吊机</option><option value="frontier">吴家村 · 开放大地图（3000×3000）</option></select>
-    <div style="font-size:12px;color:var(--dim);margin-top:5px">单人直接选择；联机由房主决定地图。</div>
-    <div class="modegrid">
-      <div class="modecard" id="btn-single"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><circle cx="24" cy="24" r="13" fill="none" stroke="#ffb347" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#ff8c1a"/><path d="M24 2v9M24 37v9M2 24h9M37 24h9" stroke="#ffb347" stroke-width="2.5"/></svg></div><div class="t">开始行动</div><div class="d">单人搜打撤 · 对抗 7 名 AI<br>搜物资 → 交火 → 撤离</div></div>
-      <div class="modecard" id="btn-host"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><path d="M8 22 24 8l16 14" fill="none" stroke="#ffb347" stroke-width="2.5"/><path d="M13 22v18h22V22" fill="none" stroke="#ffb347" stroke-width="2.5"/><rect x="21" y="29" width="6" height="11" fill="#ff8c1a"/></svg></div><div class="t">创建房间</div><div class="d">成为房主，生成邀请码<br>邀请朋友加入战斗</div></div>
-      <div class="modecard" id="btn-guest"><div class="ic"><svg viewBox="0 0 48 48" width="34" height="34"><path d="M20 28l8-8" stroke="#ffb347" stroke-width="2.5"/><path d="M17 31l-3 3a6 6 0 0 1-8-8l6-6a6 6 0 0 1 8 0" fill="none" stroke="#ffb347" stroke-width="2.5"/><path d="M31 17l3-3a6 6 0 0 1 8 8l-6 6a6 6 0 0 1-8 0" fill="none" stroke="#ffb347" stroke-width="2.5"/></svg></div><div class="t">加入房间</div><div class="d">粘贴房主的邀请码<br>快速进入战场</div></div>
-    </div>
-    <div class="ctrls">
-      <span><b>WASD</b>移动</span><span><b>鼠标</b>视角</span><span><b>左键</b>射击</span><span><b>右键</b>机瞄</span>
-      <span><b>Shift</b>疾跑</span><span><b>空格</b>跳跃</span><span><b>R</b>装弹</span><span><b>Tab</b>计分板</span>
-      <span><b>T</b>聊天</span><span><b>Esc</b>暂停</span><span><b>M</b>静音</span><span><b>1</b>备用武器位</span>
-    </div>
-    <label class="lab">战术档案</label>
-    <div class="profbox" id="profile-box"></div>
-    <div id="wujia-music-card">
-      <div class="wm-title">吴家村秘曲 ·《十一笔》</div>
-      <div class="wm-progress" id="wujia-music-progress">正在读取累计击杀记录…</div>
-      <div id="wujia-music-controls" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;position:relative;z-index:3;pointer-events:auto">
-        <label for="wujia-music-name" style="font-size:12px;color:#c9b18b">名称</label>
-        <input id="wujia-music-name" type="text" placeholder="请输入吴家村" autocomplete="off" aria-label="输入名称吴家村" style="width:132px;min-width:0;padding:7px 9px;border:1px solid #6b512b;border-radius:5px;background:#10150c;color:#fff;font:inherit;user-select:text;-webkit-user-select:text;pointer-events:auto">
-        <button id="wujia-music-confirm" type="button" style="padding:7px 13px;border:1px solid #b17a35;border-radius:5px;background:#754313;color:#fff;font:inherit;cursor:pointer;pointer-events:auto">确定</button>
-        <button id="wujia-music-btn" class="hidden" type="button" aria-label="播放或暂停吴家村专属小曲" style="position:static;padding:7px 11px;font-size:12px;box-shadow:none">🎵 播放《十一笔》</button>
-        <input id="wujia-music-seek" type="range" min="0" max="1000" value="0" aria-label="《十一笔》播放进度" style="flex:1 1 150px;min-width:120px;accent-color:#ffb347;cursor:pointer;touch-action:pan-x">
-        <span id="wujia-music-time" style="font-size:11px;color:#c9b18b;font-variant-numeric:tabular-nums">0:00 / 0:00</span>
+<!-- ============ 主菜单（三角洲行动 · 大厅版） ============ -->
+<div id="menu" class="screen df-menu">
+<style>
+/* ===== df 大厅专用样式（在 .panel 体系之外，全屏布局） ===== */
+#menu.df-menu{position:fixed;inset:0;background:transparent;display:block;overflow:hidden;z-index:28}
+#menu.df-menu .df-vignette{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(6,9,5,.78) 0%,rgba(6,9,5,.45) 34%,transparent 62%),
+             linear-gradient(0deg,rgba(6,9,5,.82) 0%,transparent 26%),
+             radial-gradient(130% 100% at 78% 18%,transparent 52%,rgba(6,9,5,.5) 100%)}
+#menu.df-menu .df-delta-mark{position:absolute;right:3%;top:11%;width:290px;height:290px;opacity:.10;pointer-events:none;z-index:1}
+.df-delta-mark svg{width:100%;height:100%}
+.df-scan{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 2px,transparent 2px 4px)}
+/* ---------- 顶部栏 ---------- */
+.df-topbar{position:absolute;top:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;z-index:6;
+  background:linear-gradient(180deg,rgba(8,11,7,.85),rgba(8,11,7,.45) 70%,transparent)}
+.df-player{display:flex;align-items:center;gap:12px}
+.df-avatar{width:46px;height:46px;position:relative;flex:none;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  background:linear-gradient(160deg,#3c4a2e,#1c2414);border:1px solid #6d7f4a;display:flex;align-items:center;justify-content:center}
+.df-avatar svg{width:28px;height:28px}
+.df-pinfo{display:flex;flex-direction:column;gap:3px}
+.df-prow{display:flex;align-items:center;gap:10px}
+.df-nick{background:transparent;border:none;border-bottom:1px solid transparent;color:#fff;font-size:17px;font-weight:800;
+  letter-spacing:1px;width:150px;padding:1px 2px;outline:none}
+.df-nick:focus{border-bottom-color:var(--accent)}
+.df-lvl{background:var(--accent);color:#1a1206;font-size:11px;font-weight:900;padding:2px 8px;letter-spacing:1px;
+  clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+.df-xpbar{width:170px;height:3px;background:rgba(255,255,255,.14)}
+.df-xpbar i{display:block;height:100%;background:linear-gradient(90deg,#ffb347,#ff8c1a)}
+.df-psub{font-size:11px;color:var(--dim);letter-spacing:1px}
+.df-topright{display:flex;align-items:center;gap:10px}
+.df-cur{display:flex;align-items:center;gap:7px;background:rgba(16,21,12,.82);border:1px solid #3d4a2c;
+  padding:5px 6px 5px 12px;min-width:150px;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.df-cur b{font-size:15px;color:#ffe9b0;letter-spacing:1px}
+.df-cur span{font-size:11px;color:var(--dim);letter-spacing:1px}
+.df-cur svg{flex:none}
+.df-plus{background:#2f3a24;border:1px solid var(--line);color:var(--accent2);width:22px;height:22px;font-size:15px;
+  line-height:1;cursor:pointer;font-family:inherit}
+.df-plus:hover{border-color:var(--accent);color:#fff}
+.df-iconbtn{position:relative;width:40px;height:40px;background:rgba(16,21,12,.82);border:1px solid #3d4a2c;color:#cfd8bd;
+  font-size:18px;cursor:pointer;font-family:inherit}
+.df-iconbtn:hover{border-color:var(--accent);color:#fff}
+.df-dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:#ff5a3c}
+/* ---------- 左侧导航 ---------- */
+.df-rail{position:absolute;left:0;top:64px;bottom:0;width:96px;z-index:6;display:flex;flex-direction:column;gap:2px;
+  padding:14px 0 18px;background:linear-gradient(90deg,rgba(8,11,7,.88) 0%,rgba(8,11,7,.55) 78%,transparent)}
+.df-rail-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px 10px;
+  background:transparent;border:none;border-left:3px solid transparent;color:#8b987c;cursor:pointer;
+  font-family:inherit;letter-spacing:2px;font-size:12.5px;transition:all .15s}
+.df-rail-btn svg{width:30px;height:30px;stroke:#8b987c;transition:all .15s}
+.df-rail-btn:hover{color:#dfe6cc;background:rgba(255,255,255,.04)}
+.df-rail-btn:hover svg{stroke:#dfe6cc}
+.df-rail-btn.active{color:#ffb347;border-left-color:var(--accent);
+  background:linear-gradient(90deg,rgba(255,140,26,.16),transparent 75%)}
+.df-rail-btn.active svg{stroke:#ff8c1a;filter:drop-shadow(0 0 6px rgba(255,140,26,.45))}
+.df-badge{position:absolute;top:8px;right:14px;background:#ff5a3c;color:#1a1206;font-size:10px;font-weight:900;
+  min-width:17px;height:17px;line-height:17px;text-align:center;border-radius:9px;padding:0 4px}
+.df-badge.hot{background:#ffb347}
+.df-rail-foot{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:6px;color:#4d5a3d}
+.df-rail-foot .dtri{width:26px;height:26px}
+.df-rail-foot small{font-size:9px;letter-spacing:1px}
+/* ---------- 主舞台 ---------- */
+.df-stage{position:absolute;left:96px;top:64px;right:0;bottom:0;z-index:5}
+.df-panel{position:absolute;inset:0;display:none;overflow-y:auto;padding:14px 30px 18px 26px}
+.df-panel.active{display:block;animation:dfFade .28s ease}
+.df-panel.active:not([data-panel="lobby"]){background:radial-gradient(900px 560px at 32% 30%,rgba(8,11,7,.62),rgba(8,11,7,.18) 70%)}
+@keyframes dfFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* ---------- 大厅 tab ---------- */
+.df-hero-left{position:absolute;top:20px;left:26px;max-width:640px}
+.df-season-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:1px;color:#ffe1a8;
+  background:rgba(25,32,18,.78);border:1px solid #574a26;border-left:3px solid var(--accent);padding:5px 12px;margin-bottom:16px}
+.df-pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:dfPulse 1.6s infinite}
+@keyframes dfPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,140,26,.7)}50%{box-shadow:0 0 0 5px rgba(255,140,26,0)}}
+.df-logo{font-size:64px;letter-spacing:8px;font-weight:900;color:#fff;line-height:1.04;cursor:pointer;
+  text-shadow:0 0 34px rgba(255,140,26,.35),0 3px 0 rgba(0,0,0,.4);font-family:"Arial Black","Segoe UI","Microsoft YaHei",sans-serif}
+.df-logo .en{display:block;font-size:17px;letter-spacing:10px;color:var(--accent);font-weight:800;margin-top:8px}
+.df-sub{color:#c4cdb4;font-size:13px;margin:14px 0 8px;letter-spacing:1px}
+.df-badges .badge{margin-right:6px}
+/* 行动简报卡（左下） */
+.df-brief{position:absolute;left:26px;bottom:86px;width:380px;background:rgba(13,17,10,.86);
+  border:1px solid #43502e;padding:13px 16px 14px;backdrop-filter:blur(3px);
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,0 100%)}
+.df-brief-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.df-tag{background:#ff8c1a;color:#1a1206;font-size:11px;font-weight:900;letter-spacing:2px;padding:3px 10px}
+.df-brief-code{font-size:10.5px;color:#7c8a68;letter-spacing:2px}
+.df-brief select{width:100%;font-size:15px;font-weight:700;letter-spacing:.5px;background:#10160c;
+  border:1px solid var(--line);color:#ffe9b0;padding:9px 10px}
+.df-brief-meta{display:flex;gap:10px;margin-top:8px;font-size:10.5px;color:#9aa78a;letter-spacing:1px}
+.df-brief-meta span{border:1px solid #37402a;padding:2px 6px;background:#151b10}
+.df-brief-desc{font-size:11.5px;color:#b8c2a4;line-height:1.55;margin-top:8px;min-height:34px}
+/* CTA 区（右下） */
+.df-cta{position:absolute;right:38px;bottom:96px;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.df-cta-main{display:flex;align-items:center;gap:18px;cursor:pointer;border:none;
+  background:linear-gradient(180deg,#ffb02e,#f08c0a 55%,#c96a06);color:#221200;
+  padding:20px 34px 20px 44px;font-family:inherit;font-size:31px;font-weight:900;letter-spacing:10px;
+  box-shadow:0 10px 40px rgba(255,150,20,.35),inset 0 2px 0 rgba(255,255,255,.55);
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));
+  transition:transform .12s, box-shadow .12s}
+.df-cta-main:hover{transform:translateY(-2px);box-shadow:0 14px 48px rgba(255,150,20,.5),inset 0 2px 0 rgba(255,255,255,.6)}
+.df-cta-main:active{transform:translateY(1px)}
+.df-cta-main svg{width:30px;height:30px;stroke:#221200}
+.df-cta-sub{font-size:12px;color:#d8ddbc;letter-spacing:1px}
+.df-cta-sub b{color:#ffb347;border:1px solid #574a26;padding:0 6px;margin:0 2px;font-weight:700}
+.df-cta-row{display:flex;gap:10px}
+.df-ghost{background:rgba(16,21,12,.8);border:1px solid #4a5a38;color:#dfe6cc;padding:10px 18px;font-size:14px;
+  letter-spacing:2px;cursor:pointer;font-family:inherit;transition:all .15s;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
+.df-ghost:hover{border-color:var(--accent);color:#fff}
+.df-controls{position:absolute;left:26px;bottom:58px;font-size:11px;color:#77846a;letter-spacing:.5px}
+.df-controls b{color:#cfd8bd;border:1px solid #39432c;padding:0 5px;margin:0 1px}
+.df-ver{position:absolute;right:26px;bottom:14px;font-size:10px;color:#55613f;letter-spacing:2px}
+/* ---------- 通用内容页（干员/枪械库/仓库/任务/商城） ---------- */
+.df-title{font-size:26px;font-weight:900;letter-spacing:6px;color:#fff;margin:6px 0 2px;
+  border-left:4px solid var(--accent);padding-left:12px}
+.df-title small{display:block;font-size:11px;letter-spacing:4px;color:var(--dim);font-weight:600;margin-top:3px}
+.df-grid{display:grid;gap:12px;margin-top:14px}
+.df-grid.ops{grid-template-columns:repeat(3,minmax(0,1fr))}
+.df-grid.guns{grid-template-columns:repeat(3,minmax(0,1fr))}
+.df-opcard{background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:13px 14px;cursor:pointer;backdrop-filter:blur(4px);transition:all .15s;position:relative;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
+.df-opcard:hover{border-color:#6d7f4a;transform:translateY(-2px)}
+.df-opcard.sel{border-color:var(--accent);box-shadow:0 0 22px rgba(255,140,26,.16) inset}
+.df-opcard.sel::after{content:"选中";position:absolute;top:10px;right:12px;background:var(--accent);color:#1a1206;
+  font-size:10px;font-weight:900;padding:2px 8px;letter-spacing:2px}
+.df-opicon{width:58px;height:58px;margin-bottom:8px}
+.df-opname{font-size:17px;font-weight:800;letter-spacing:2px;color:#fff}
+.df-oprole{font-size:10.5px;color:var(--accent2);letter-spacing:2px;margin:2px 0 6px}
+.df-opdesc{font-size:11.5px;color:#a9b493;line-height:1.6;min-height:36px}
+.df-opbar{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:10px;color:var(--dim);letter-spacing:1px}
+.df-opbar .bar{flex:1;height:3px;background:rgba(255,255,255,.12)}
+.df-opbar .bar i{display:block;height:100%;background:#ffb347}
+.df-gun{background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:13px 14px;position:relative;backdrop-filter:blur(4px)}
+.df-gun.owned{border-color:#5a6b3d}
+.df-gun.locked{opacity:.62}
+.df-gun svg{width:100%;height:64px;margin:4px 0 6px}
+.df-gunname{font-size:15px;font-weight:800;letter-spacing:1px}
+.df-gunno{font-size:9.5px;color:#6f7d55;letter-spacing:2px}
+.df-stat{display:flex;align-items:center;gap:6px;font-size:9.5px;color:var(--dim);margin-top:3px;letter-spacing:1px}
+.df-stat b{width:26px;text-align:right;font-weight:600;color:#b8c2a4}
+.df-stat .bar{flex:1;height:3px;background:rgba(255,255,255,.12)}
+.df-stat .bar i{display:block;height:100%;background:#9fb36a}
+.df-lock{margin-top:7px;font-size:10.5px;color:#c9a25a;letter-spacing:1px;border-top:1px solid #2c3623;padding-top:7px}
+.df-own{margin-top:7px;font-size:10.5px;color:#8fd06a;letter-spacing:1px;border-top:1px solid #2c3623;padding-top:7px}
+/* 仓库 */
+.df-storage-wrap{max-width:760px}
+.df-note-block{background:rgba(255,140,26,.05);border-left:3px solid var(--accent);padding:9px 13px;font-size:12px;
+  color:#a9b493;line-height:1.7;margin-top:12px}
+.df-legend-title{font-size:12px;color:var(--dim);letter-spacing:2px;margin:14px 0 6px}
+/* 任务 */
+.df-mission{display:flex;align-items:center;gap:14px;background:rgba(13,17,10,.93);border:1px solid #333f27;
+  padding:12px 16px;margin-top:10px;max-width:720px;backdrop-filter:blur(4px)}
+.df-micon{flex:none;width:44px;height:44px;border:1px solid #4a5a38;display:flex;align-items:center;justify-content:center;
+  color:#ffb347;font-size:20px}
+.df-minfo{flex:1}
+.df-mname{font-size:14px;font-weight:800;letter-spacing:1px}
+.df-mdesc{font-size:11.5px;color:#9aa78a;margin:2px 0 6px}
+.df-mbar{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--dim)}
+.df-mbar .bar{flex:1;height:4px;background:rgba(255,255,255,.12)}
+.df-mbar .bar i{display:block;height:100%;background:linear-gradient(90deg,#ffb347,#ff8c1a)}
+.df-mclaim{flex:none;background:#2f3a24;border:1px solid var(--line);color:#ffb347;padding:8px 14px;font-size:12px;
+  letter-spacing:2px;cursor:pointer;font-family:inherit}
+.df-mclaim:hover{border-color:var(--accent);color:#fff}
+.df-mclaim:disabled{opacity:.4;cursor:default}
+/* 商城 */
+.df-shopbanner{background:linear-gradient(120deg,rgba(255,140,26,.16),rgba(255,140,26,.03));border:1px solid #574a26;
+  border-left:4px solid var(--accent);padding:12px 18px;margin-top:12px;max-width:720px;display:flex;justify-content:space-between;align-items:center}
+.df-shopbanner .t{font-size:17px;font-weight:900;letter-spacing:2px;color:#ffe1a8}
+.df-shopbanner .d{font-size:11px;color:#a99a72;letter-spacing:1px;margin-top:3px}
+.df-shopbanner .tag{background:var(--accent);color:#1a1206;font-size:10px;font-weight:900;padding:3px 10px;letter-spacing:2px}
+.df-shopgrid{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
+.df-shopcard{width:228px;background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:14px;text-align:center;backdrop-filter:blur(4px)}
+.df-shopcard .art{height:84px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.df-shopcard .n{font-size:14px;font-weight:800;letter-spacing:1px}
+.df-shopcard .d{font-size:10.5px;color:#9aa78a;line-height:1.6;min-height:48px;margin:6px 0}
+.df-price{display:flex;align-items:center;justify-content:center;gap:6px;color:#ffe9b0;font-size:16px;font-weight:800;margin-bottom:8px}
+.df-buy{width:100%;background:#2f3a24;border:1px solid var(--line);color:#dfe6cc;padding:8px 0;cursor:pointer;
+  font-family:inherit;letter-spacing:3px;font-size:12px}
+.df-buy:hover{border-color:var(--accent);color:#fff}
+/* ---------- 响应式 ---------- */
+@media (max-width:1180px){
+  .df-logo{font-size:48px}
+  .df-brief{width:330px}
+  .df-cta-main{font-size:25px;padding:16px 26px 16px 32px}
+  .df-grid.ops,.df-grid.guns{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-height:760px){
+  .df-brief{bottom:70px}
+  .df-cta{bottom:78px}
+  .df-hero-left{top:8px}
+  .df-logo{font-size:42px}
+}
+</style>
+
+  <div class="df-vignette"></div>
+  <div class="df-delta-mark" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 6 94 88H6L50 6Z" fill="none" stroke="#ffb347" stroke-width="1.6" stroke-linejoin="round"/><path d="M50 26 80 78H20L50 26Z" fill="none" stroke="#ffb347" stroke-width="1.1" opacity="0.7"/></svg></div>
+  <div class="df-scan"></div>
+
+  <!-- ════════ 顶部栏 ════════ -->
+  <header class="df-topbar">
+    <div class="df-player">
+      <div class="df-avatar" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none"><path d="M24 6 42 40H6L24 6Z" stroke="#ffb347" stroke-width="2.6" stroke-linejoin="round"/><path d="M24 18 34 36H14L24 18Z" fill="#ff8c1a"/></svg>
+      </div>
+      <div class="df-pinfo">
+        <div class="df-prow">
+          <input id="name-input" class="df-nick" maxlength="12" spellcheck="false" autocomplete="off" aria-label="你的呼号（昵称）">
+          <span class="df-lvl">LV.24</span>
+        </div>
+        <div class="df-xpbar"><i style="width:68%"></i></div>
+        <div class="df-psub">特种部队 · 搜打撤专家</div>
       </div>
     </div>
-    <div class="legend">
-      <span><i style="background:#ffc14a"></i>未搜索容器</span>
-      <span><i style="background:#7dd069"></i>已开放撤离点</span>
-      <span><i style="background:#8a927e"></i>未开放撤离点</span>
-      <span><i style="background:#c07ad8"></i>高价值物资</span>
-    </div>
-    <div id="touch-opt" class="hidden" style="margin-top:14px;background:#10150c;border:1px solid var(--line);padding:12px 14px">
-      <div class="row" style="justify-content:space-between">
-        <span style="font-size:13px;color:var(--accent2);letter-spacing:1px">触屏视角灵敏度</span>
-        <span id="sens-val" style="font-size:13px;color:var(--txt)">1.00×</span>
+    <div class="df-topright">
+      <div class="df-cur" title="哈弗币 · 搜打撤通用货币">
+        <svg width="17" height="17" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="#e8c56a" stroke="#8a6f2a" stroke-width="1.4"/><text x="10" y="13.6" text-anchor="middle" font-size="10" font-weight="900" fill="#5d4712">H</text></svg>
+        <b>128,600</b><span>哈弗币</span>
+        <button class="df-plus" data-toast="商城即将开放，敬请期待" aria-label="获取哈弗币">+</button>
       </div>
-      <input id="sens-range" type="range" min="1.2" max="3.4" step="0.05" value="2.15"
-             style="width:100%;margin-top:8px;accent-color:#ff8c1a">
-      <div style="font-size:11.5px;color:var(--dim);margin-top:4px">手指滑动多少，视角就转多少（严格线性，无加速度）。滑右即向右转、滑上即向上看。</div>
+      <div class="df-cur" title="三角券 · 通行证/干员货币">
+        <svg width="17" height="17" viewBox="0 0 20 20"><path d="M3 6h14l-2 4 2 4H3l2-4-2-4Z" fill="#9fd0ff" stroke="#3a5a72" stroke-width="1.3" stroke-linejoin="round"/><text x="10" y="13" text-anchor="middle" font-size="8" font-weight="900" fill="#17344a">Δ</text></svg>
+        <b>2,380</b><span>三角券</span>
+        <button class="df-plus" data-toast="商城即将开放，敬请期待" aria-label="获取三角券">+</button>
+      </div>
+      <button class="df-iconbtn" data-toast="暂无新邮件" aria-label="邮件">✉<span class="df-dot"></span></button>
+      <button class="df-iconbtn" data-toast="设置面板即将开放" aria-label="设置">⚙</button>
     </div>
-    <div class="note"><b>联机说明：</b>本游戏使用 WebRTC 点对点直连，没有中央服务器。房主点击「生成邀请码」发给朋友，朋友粘贴后生成「回复码」发回房主即可连接（复制粘贴交换 SDP）。双方建议使用最新版游戏和 Chrome / Edge，邀请码经过压缩，仍需交换回复码。若双方网络 NAT 严格（如部分公司/校园网），可能需要开 VPN 或在同一局域网下进行。所有战斗判定由房主模拟（房主权威），保证公平一致。</div>
-  </div>
+  </header>
+
+  <!-- ════════ 左侧导航 ════════ -->
+  <nav class="df-rail" aria-label="主菜单导航">
+    <button class="df-rail-btn active" data-tab="lobby" aria-label="大厅">
+      <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><path d="M8 24 24 9l16 15"/><path d="M13 22v17h22V22"/><rect x="21" y="29" width="6" height="10"/></svg>
+      <span>大厅</span>
+    </button>
+    <button class="df-rail-btn" data-tab="operator" aria-label="干员">
+      <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><circle cx="24" cy="14" r="6.5"/><path d="M10 40c1.5-9 7-13 14-13s12.5 4 14 13"/></svg>
+      <span>干员</span>
+    </button>
+    <button class="df-rail-btn" data-tab="armory" aria-label="枪械库">
+      <svg viewBox="0 0 48 48" fill="none" stroke-width="2.2" stroke-linejoin="round"><path d="M6 28h16l3-6h8l2 6h7v6h-8l-2 5H12v-6H6z"/><path d="M26 22V14h6v8"/></svg>
+      <span>枪械库</span>
+    </button>
+    <button class="df-rail-btn" data-tab="storage" aria-label="仓库">
+      <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><path d="M8 16 24 8l16 8v16l-16 8-16-8V16Z"/><path d="M8 16l16 8 16-8M24 24v16"/></svg>
+      <span>仓库</span>
+    </button>
+    <button class="df-rail-btn" data-tab="mission" aria-label="任务">
+      <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><rect x="12" y="8" width="24" height="33"/><path d="M19 8V5h10v3M18 20h12M18 28h12M18 36h7"/></svg>
+      <span>任务</span>
+      <i class="df-badge">3</i>
+    </button>
+    <button class="df-rail-btn" data-tab="shop" aria-label="商城">
+      <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><path d="M10 16h28l-3 24H13L10 16Z"/><circle cx="20" cy="46" r="2.2"/><circle cx="32" cy="46" r="2.2"/><path d="M17 16a7 7 0 0 1 14 0"/></svg>
+      <span>商城</span>
+      <i class="df-badge hot">HOT</i>
+    </button>
+    <div class="df-rail-foot" aria-hidden="true">
+      <svg class="dtri" viewBox="0 0 48 48" fill="none"><path d="M24 6 42 40H6L24 6Z" stroke="#55613f" stroke-width="2.4" stroke-linejoin="round"/></svg>
+      <small>WEB OPS</small>
+    </div>
+  </nav>
+
+  <!-- ════════ 主舞台 ════════ -->
+  <main class="df-stage">
+
+    <!-- ───────── 大厅 ───────── -->
+    <section class="df-panel active" data-panel="lobby">
+      <div class="df-hero-left">
+        <div class="df-season-chip"><span class="df-pulse"></span>S1 赛季 · 黑石行动 — 开放大地图「吴家村」首发</div>
+        <h1 class="logo df-logo" title="三角洲行动">三角洲行动<span class="en">DELTA FORCE · WEB OPS</span></h1>
+        <div class="df-sub">3D 战术射击 · 搜物资 / 打交火 / 撤出生天 · 阵亡丢失背包，保险箱保留</div>
+        <div class="df-badges"><span class="badge">WebRTC DataChannel</span><span class="badge">房主权威 Host-Authoritative</span><span class="badge">P2P 直连 · 无需服务器</span></div>
+      </div>
+
+      <div class="df-brief">
+        <div class="df-brief-head"><span class="df-tag">行动简报</span><span class="df-brief-code">OP · 黑石 / BLACKSTONE</span></div>
+        <label class="lab" for="map-select" style="margin:4px 0 5px">选择作战地图</label>
+        <select id="map-select" aria-label="选择地图"><option value="base">军事禁区 · 仓库与集装箱</option><option value="outpost">边境前哨 · 断墙与战壕</option><option value="oilfield">沙漠油田 · 储油罐与采油机</option><option value="urban">废弃城区 · 破楼与街巷</option><option value="harbor">临海港口 · 货柜与吊机</option><option value="frontier" selected>吴家村 · 开放大地图（3000×3000）</option></select>
+        <div class="df-brief-meta"><span id="brief-mode">搜打撤 · 开放大地图</span><span id="brief-time">袭击时限 30:00</span><span id="brief-scale">3000×3000m</span></div>
+        <div class="df-brief-desc" id="brief-desc">开放大地图「吴家村」：九个命名地标可自由选择落点，行动时限 30 分钟；天基空投第 15:00 落村中心。</div>
+      </div>
+
+      <div class="df-cta">
+        <button id="btn-single" class="df-cta-main" aria-label="开始行动（单人）"><span class="df-cta-txt">开始行动</span><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="square"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+        <div class="df-cta-sub">单人搜打撤 · <span id="cta-ai">对抗 12 名 AI（开放大地图）</span> · 按 <b>Enter</b> 快速开始</div>
+        <div class="df-cta-row">
+          <button id="btn-host" class="df-ghost">⌂&nbsp; 创建房间</button>
+          <button id="btn-guest" class="df-ghost">⬈&nbsp; 加入房间</button>
+        </div>
+      </div>
+
+      <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.4.0</div>
+    </section>
+
+    <!-- ───────── 干员 ───────── -->
+    <section class="df-panel" data-panel="operator">
+      <div class="df-title">干员<small>OPERATORS · 选择你的行动搭档</small></div>
+      <div class="df-grid ops" id="op-grid"></div>
+    </section>
+
+    <!-- ───────── 枪械库 ───────── -->
+    <section class="df-panel" data-panel="armory">
+      <div class="df-title">枪械库<small>ARMORY · 武器鉴定与解锁进度</small></div>
+      <div class="df-grid guns" id="gun-grid"></div>
+    </section>
+
+    <!-- ───────── 仓库 ───────── -->
+    <section class="df-panel" data-panel="storage">
+      <div class="df-storage-wrap">
+        <div class="df-title">仓库<small>STORAGE · 资产档案与作战手册</small></div>
+        <label class="lab">战术档案</label>
+        <div class="profbox" id="profile-box"></div>
+        <div class="df-legend-title">战场图例</div>
+        <div class="legend">
+          <span><i style="background:#ffc14a"></i>未搜索容器</span>
+          <span><i style="background:#7dd069"></i>已开放撤离点</span>
+          <span><i style="background:#8a927e"></i>未开放撤离点</span>
+          <span><i style="background:#c07ad8"></i>高价值物资</span>
+        </div>
+        <div id="wujia-music-card">
+          <div class="wm-title">吴家村秘曲 ·《十一笔》</div>
+          <div class="wm-progress" id="wujia-music-progress">双击主标题「三角洲行动」两次即可播放 / 暂停</div>
+        </div>
+        <div id="touch-opt" class="hidden" style="margin-top:14px;background:#10150c;border:1px solid var(--line);padding:12px 14px">
+          <div class="row" style="justify-content:space-between">
+            <span style="font-size:13px;color:var(--accent2);letter-spacing:1px">触屏视角灵敏度</span>
+            <span id="sens-val" style="font-size:13px;color:var(--txt)">1.00×</span>
+          </div>
+          <input id="sens-range" type="range" min="1.2" max="3.4" step="0.05" value="2.15"
+                 style="width:100%;margin-top:8px;accent-color:#ff8c1a">
+          <div style="font-size:11.5px;color:var(--dim);margin-top:4px">手指滑动多少，视角就转多少（严格线性，无加速度）。滑右即向右转、滑上即向上看。</div>
+        </div>
+        <div class="df-note-block"><b>联机说明：</b>本游戏使用 WebRTC 点对点直连，没有中央服务器。房主点击「创建房间」生成邀请码发给朋友，朋友粘贴后生成「回复码」发回房主即可连接（复制粘贴交换 SDP）。双方建议使用最新版游戏和 Chrome / Edge，邀请码经过压缩，仍需交换回复码。若双方网络 NAT 严格（如部分公司/校园网），可能需要开 VPN 或在同一局域网下进行。所有战斗判定由房主模拟（房主权威），保证公平一致。</div>
+      </div>
+    </section>
+
+    <!-- ───────── 任务 ───────── -->
+    <section class="df-panel" data-panel="mission">
+      <div class="df-title">任务<small>OPERATIONS · 赛季行动目标</small></div>
+      <div id="mission-list"></div>
+    </section>
+
+    <!-- ───────── 商城 ───────── -->
+    <section class="df-panel" data-panel="shop">
+      <div class="df-title">商城<small>SUPPLY · S1 赛季首发补给</small></div>
+      <div class="df-shopbanner"><div><div class="t">S1 · 黑石行动 首发补给</div><div class="d">限时档案：干员「红狼」· M4A1「沙暴」涂装 · 头像框「吴家村守望者」</div></div><span class="tag">S1 限时</span></div>
+      <div class="df-shopgrid" id="shop-grid"></div>
+    </section>
+
+  </main>
 </div>
 
 <!-- ============ 房主信号界面 ============ -->
@@ -582,7 +884,7 @@ body.touchmode #joystickHint{display:none}
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.3.1';
+DF.VERSION = '1.4.0';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -3390,6 +3692,7 @@ DF.init = function () {
   DF.lootColliders = DF.colliders.slice(DF.mapCache.base.colliders.length);
   DF.createEffects(scene);
   DF.createViewModel(camera);
+  DF.spawnMenuActor(scene);
   DF.net = new DF.Net();
 
   // 输入状态
@@ -4321,6 +4624,7 @@ DF.resetRoundInputState = function () {
 };
 
 DF.beginPlay = function () {
+  if (DF.menuActor) DF.menuActor.visible = false;
   // 重新开局必须从干净状态开始，不依赖刷新页面清理旧状态。
   if (DF.lootOpen && DF.closeLootUI) DF.closeLootUI();
   DF.resetRoundInputState();
@@ -4362,6 +4666,7 @@ DF.quitToMenu = function () {
   I_unlock();
   DF.cleanupNet();
   DF.resetPlayers();
+  if (DF.menuActor) DF.menuActor.visible = true;
   DF.show('menu');
   DF.updateHostPlayers();
 };
@@ -5117,12 +5422,38 @@ DF.autoQuality = function () {
   }
 };
 
+/* 菜单角色「驻村人」：三角洲行动风格大厅的 3D 主角 */
+DF.spawnMenuActor = function (scene) {
+  const actor = DF.makeCharacter(0x424f2c);
+  actor.position.set(0.5, 0, 2.5);
+  actor.scale.set(1.18, 1.18, 1.18);
+  actor.rotation.y = Math.PI * 0.85;
+  if (actor.userData && actor.userData.label) actor.userData.label.visible = false;
+  scene.add(actor);
+  DF.menuActor = actor;
+};
+
 DF.idleCamera = function (dt) {
-  // 菜单背景缓慢环绕
-  DF.idleT = (DF.idleT || 0) + dt * 0.08;
-  const r = 62;
-  DF.camera.position.set(Math.cos(DF.idleT) * r, 24 + Math.sin(DF.idleT * 0.7) * 6, Math.sin(DF.idleT) * r);
-  DF.camera.lookAt(0, 2, 0);
+  // 菜单大厅：围绕驻村人缓慢环绕（Delta Force Key-art 视角）
+  DF.idleT = (DF.idleT || 0) + dt * 0.17;
+  const ax = 0.5, az = 2.5, ar = 2.35;
+  const px = ax + Math.cos(DF.idleT) * ar, pz = az + Math.sin(DF.idleT) * ar;
+  DF.camera.position.set(px, 1.34 + Math.sin(DF.idleT * 0.6) * 0.15, pz);
+  // 目标点左移，令角色位于画面右侧（Delta Force 主视觉构图）
+  const fx = ax - px, fz = az - pz, fl = Math.hypot(fx, fz);
+  const rx = -fz / fl, rz = fx / fl;
+  const shift = 1.02;
+  DF.camera.lookAt(ax - rx * shift, 1.24, az - rz * shift);
+  const actor = DF.menuActor;
+  if (actor) {
+    // 始终面向镜头 + 缓慢呼吸起伏
+    actor.rotation.y = Math.atan2(-(DF.camera.position.x - ax), -(DF.camera.position.z - az));
+    const ud = actor.userData;
+    ud.walkPhase = (ud.walkPhase || 0) + dt * 1.55;
+    actor.position.y = Math.sin(ud.walkPhase) * 0.028;
+    if (ud.torso) ud.torso.scale.y = 1 + Math.sin(ud.walkPhase) * 0.022;
+    actor.rotation.z = Math.sin(ud.walkPhase * 0.5) * 0.012;
+  }
   if (DF.viewModel) DF.viewModel.visible = false;
 };
 
@@ -6142,6 +6473,230 @@ DF.WujiaMusic = (() => {
 })();
 
 DF.WujiaMusic.init();
+
+
+/* ============================================================
+   大厅：三角洲行动风格主菜单
+   —— 标签切换 / 行动简报联动 / 干员·枪械库·任务·商城 渲染
+   （所有数据均为本地展示用静态内容，不影响战局逻辑）
+   ============================================================ */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const el = s => document.querySelector(s);
+  const els = s => Array.from(document.querySelectorAll(s));
+  const toast = m => { if (typeof DF !== 'undefined' && DF.toast) DF.toast(m); };
+
+  /* ---------- 地图简报 ---------- */
+  const MAP_META = {
+    base:     { mode: '搜打撤 · 经典战区', time: '行动时限 15:00', scale: '约 220×220m', desc: '军事禁区：仓库与集装箱纵横，物资密集。适合新兵上手，机器人相对稀疏。' },
+    outpost:  { mode: '搜打撤 · 前线阵地', time: '行动时限 15:00', scale: '约 260×260m', desc: '边境前哨：断墙与战壕构成交叉火力网，注意壕沟之间的侧翼警戒。' },
+    oilfield: { mode: '搜打撤 · 工业区',   time: '行动时限 15:00', scale: '约 300×300m', desc: '沙漠油田：储油罐与采油机林立，高价值物资出没，注意开阔地带的交火。' },
+    urban:    { mode: '搜打撤 · 近距离作战', time: '行动时限 15:00', scale: '约 280×280m', desc: '废弃城区：破楼与街巷适合室内清房，转角交火频繁，听好脚步声。' },
+    harbor:   { mode: '搜打撤 · 港口枢纽', time: '行动时限 15:00', scale: '约 320×320m', desc: '临海港口：货柜与吊机提供大量垂直机动空间，水边是撤离热点区域。' },
+    frontier: { mode: '搜打撤 · 开放大地图', time: '袭击时限 30:00', scale: '3000×3000m', desc: '开放大地图「吴家村」：九个命名地标可自由选择落点，行动时限 30 分钟；天基空投第 15:00 落村中心。' }
+  };
+
+  function updateBrief() {
+    const sel = $('map-select');
+    if (!sel) return;
+    const meta = MAP_META[sel.value] || MAP_META.frontier;
+    const set = (id, v) => { const n = $(id); if (n) n.textContent = v; };
+    set('brief-mode', meta.mode);
+    set('brief-time', meta.time);
+    set('brief-scale', meta.scale);
+    set('brief-desc', meta.desc);
+    set('cta-ai', sel.value === 'frontier' ? '对抗 12 名 AI（开放大地图）' : '对抗 7 名 AI');
+  }
+
+  /* ---------- 标签切换 ---------- */
+  function switchTab(name) {
+    els('.df-rail-btn[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    els('.df-panel[data-panel]').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+    // 非大厅标签页：隐藏菜单角色，保留干净背景；大厅标签：显示 3D 主角
+    if (typeof DF !== 'undefined' && DF.menuActor) DF.menuActor.visible = (name === 'lobby');
+  }
+  window.DFswitchTab = switchTab;
+
+  /* ---------- 干员 ---------- */
+  const OPERATORS = [
+    { id: 'hwolf',  name: '红狼', en: 'D-WOLF',  role: '突击 · 进攻核心', desc: '近距离爆发见长的突击干员，适合正面打开突破口，搜打撤老手之选。', power: 82, c1: '#ff8c1a', c2: '#5a3410' },
+    { id: 'weilong',name: '威龙', en: 'STRIKER', role: '突击 · 均衡型',   desc: '无明显短板的标准答案，从新手到老兵都能稳定发挥的万金油。',     power: 74, c1: '#e0d060', c2: '#4a4218' },
+    { id: 'fengyi', name: '蜂医', en: 'SHEPHERD',role: '支援 · 救援',     desc: '战场上最值得信赖的生命线，专注于拉人、保人、把队友带出撤离点。', power: 68, c1: '#7dd069', c2: '#1e3a1c' },
+    { id: 'gu',     name: '蛊',   en: 'TOX',     role: '工兵 · 破障',     desc: '以装备与陷阱掌控地形，擅长把敌人逼进自己铺好的杀戮区。',       power: 71, c1: '#c07ad8', c2: '#33203e' },
+    { id: 'luna',   name: '露娜', en: 'LUNA',    role: '侦察 · 信息',     desc: '掌握战场视野的人，才能掌握战局走向。开镜即索敌，信息即胜利。', power: 65, c1: '#6ac3d8', c2: '#163a44' },
+    { id: 'shendan',name: '深蓝', en: 'DEEPBLUE',role: '工程 · 防御',     desc: '防线的守护者，擅长在要点扎根、架设防御并反守为攻。',           power: 70, c1: '#8a9bd0', c2: '#1f2740' }
+  ];
+
+  function opIcon(o, size) {
+    return `<svg class="df-opicon" viewBox="0 0 64 64" width="58" height="58" aria-hidden="true">
+      <path d="M32 3 58 17v30L32 61 6 47V17Z" fill="${o.c2}" stroke="${o.c1}" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M32 12 50 23v18L32 52 14 41V23Z" fill="none" stroke="${o.c1}" stroke-width="1.4" opacity="0.75"/>
+      <circle cx="32" cy="26" r="6.2" fill="${o.c1}"/>
+      <path d="M18 45c2.4-8.6 7.6-12.4 14-12.4s11.6 3.8 14 12.4" fill="${o.c1}" opacity="0.9"/>
+    </svg>`;
+  }
+
+  function renderOperators() {
+    const grid = $('op-grid');
+    if (!grid) return;
+    let sel = 'hwolf';
+    try { sel = localStorage.getItem('df_operator') || 'hwolf'; } catch (e) { }
+    grid.innerHTML = OPERATORS.map(o => `
+      <div class="df-opcard${o.id === sel ? ' sel' : ''}" data-op="${o.id}" tabindex="0" role="button" aria-label="选择干员 ${o.name}">
+        ${opIcon(o)}
+        <div class="df-opname">${o.name}</div>
+        <div class="df-oprole">${o.role} · ${o.en}</div>
+        <div class="df-opdesc">${o.desc}</div>
+        <div class="df-opbar"><span>战力</span><div class="bar"><i style="width:${o.power}%"></i></div><span>${o.power}</span></div>
+      </div>`).join('');
+    grid.addEventListener('click', e => {
+      const card = e.target.closest('.df-opcard');
+      if (!card) return;
+      sel = card.getAttribute('data-op');
+      try { localStorage.setItem('df_operator', sel); } catch (err) { }
+      grid.querySelectorAll('.df-opcard').forEach(c => c.classList.toggle('sel', c === card));
+      const op = OPERATORS.find(o => o.id === sel);
+      toast(`已选择干员「${op ? op.name : sel}」`);
+    });
+  }
+
+  /* ---------- 枪械库 ---------- */
+  const GUNS = [
+    { name: 'M4A1 突击步枪', no: 'AR · 5.56mm', dmg: 46, rng: 62, rof: 72, owned: true,
+      svg: '<rect x="14" y="26" width="98" height="12" rx="1.5"/><rect x="112" y="29" width="58" height="5"/><rect x="170" y="28" width="22" height="7"/><rect x="40" y="38" width="10" height="16" transform="rotate(8 45 38)"/><rect x="58" y="38" width="8" height="11"/><rect x="8" y="24" width="12" height="17"/><rect x="66" y="20" width="16" height="6"/><rect x="30" y="19" width="5" height="7"/>' },
+    { name: 'AK-74M 突击步枪', no: 'AR · 5.45mm', dmg: 52, rng: 55, rof: 66, owned: true,
+      svg: '<path d="M14 24h96v13H34l-6 12H14l6-12z"/><rect x="110" y="27" width="56" height="6"/><rect x="166" y="26" width="24" height="8"/><path d="M52 37l-4 18h9l5-18z"/><rect x="8" y="22" width="10" height="18"/><rect x="46" y="18" width="14" height="6"/>' },
+    { name: 'MP5 冲锋枪', no: 'SMG · 9mm', dmg: 30, rng: 34, rof: 88, owned: true,
+      svg: '<rect x="34" y="26" width="66" height="11" rx="2"/><rect x="100" y="29" width="46" height="5"/><rect x="146" y="28" width="14" height="7"/><rect x="52" y="37" width="9" height="17" transform="rotate(6 56 37)"/><rect x="66" y="37" width="8" height="10"/><path d="M30 26l-8 4v8l10 2z"/><rect x="62" y="20" width="12" height="6"/>' },
+    { name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '干员等级 30 解锁',
+      svg: '<rect x="8" y="25" width="118" height="11" rx="1"/><rect x="126" y="28" width="52" height="5"/><rect x="178" y="26" width="16" height="8"/><rect x="40" y="36" width="9" height="14" transform="rotate(10 44 36)"/><rect x="64" y="36" width="7" height="10"/><path d="M4 28h10v13H4z"/><rect x="34" y="18" width="26" height="6"/><circle cx="34" cy="21" r="3.4"/><circle cx="60" cy="21" r="3.4"/><path d="M68 36l6 12h6l-4-12z"/>' },
+    { name: 'M249 轻机枪', no: 'LMG · 5.56mm', dmg: 40, rng: 60, rof: 80, owned: false, req: '累计击杀 150 解锁',
+      svg: '<rect x="16" y="25" width="104" height="13" rx="1.5"/><rect x="120" y="28" width="52" height="6"/><rect x="172" y="27" width="16" height="8"/><rect x="46" y="38" width="8" height="12"/><path d="M64 38h10l4 16H60z"/><rect x="10" y="23" width="12" height="17"/><rect x="30" y="38" width="20" height="8" rx="4"/><rect x="58" y="19" width="18" height="6"/>' },
+    { name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '完成赛季任务「无声猎手」解锁',
+      svg: '<rect x="22" y="26" width="86" height="11" rx="2"/><rect x="108" y="28" width="40" height="6"/><rect x="148" y="27" width="26" height="8" rx="3"/><rect x="50" y="37" width="8" height="15" transform="rotate(8 54 37)"/><rect x="16" y="24" width="10" height="16"/><rect x="58" y="20" width="10" height="6"/><path d="M70 37l5 11h5l-3-11z"/>' }
+  ];
+
+  const statRow = (label, v) => `<div class="df-stat"><b>${label}</b><div class="bar"><i style="width:${v}%"></i></div><span>${v}</span></div>`;
+
+  function renderGuns() {
+    const grid = $('gun-grid');
+    if (!grid) return;
+    grid.innerHTML = GUNS.map(g => `
+      <div class="df-gun ${g.owned ? 'owned' : 'locked'}">
+        <div class="df-gunno">${g.no}</div>
+        <div class="df-gunname">${g.name}</div>
+        <svg viewBox="0 0 200 64" fill="#b8c2a4" aria-hidden="true">${g.svg}</svg>
+        ${statRow('伤害', g.dmg)}${statRow('射程', g.rng)}${statRow('射速', g.rof)}
+        ${g.owned ? '<div class="df-own">✓ 已入库 · 可出勤</div>' : `<div class="df-lock">🔒 ${g.req}</div>`}
+      </div>`).join('');
+  }
+
+  /* ---------- 任务 ---------- */
+  const MISSIONS = [
+    { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', cur: 2, max: 3, award: '5,000 哈弗币' },
+    { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', cur: 17, max: 25, award: '3,000 哈弗币' },
+    { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', cur: 40, max: 40, award: '2,000 哈弗币' },
+    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', cur: 1, max: 1, award: '1,000 哈弗币 + 头像框「吴家村守望者」' }
+  ];
+
+  function renderMissions() {
+    const list = $('mission-list');
+    if (!list) return;
+    list.innerHTML = MISSIONS.map((m, i) => {
+      const done = m.cur >= m.max;
+      const pct = Math.min(100, Math.round(m.cur / m.max * 100));
+      return `<div class="df-mission">
+        <div class="df-micon">${m.icon}</div>
+        <div class="df-minfo">
+          <div class="df-mname">${m.name}</div>
+          <div class="df-mdesc">${m.desc}</div>
+          <div class="df-mbar"><div class="bar"><i style="width:${pct}%"></i></div><span>${m.cur}/${m.max}</span></div>
+        </div>
+        <button class="df-mclaim" data-idx="${i}" ${done ? '' : 'disabled'}>${done ? '领取' : '未完成'}</button>
+      </div>`;
+    }).join('');
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('.df-mclaim');
+      if (!btn || btn.disabled) return;
+      const m = MISSIONS[Number(btn.getAttribute('data-idx'))];
+      btn.disabled = true;
+      btn.textContent = '已领取';
+      toast(`任务「${m.name}」奖励已发放：${m.award}`);
+    });
+  }
+
+  /* ---------- 商城 ---------- */
+  const SHOP = [
+    { n: '干员「红狼」档案', d: 'S1 首发干员。近战突击型，附赠专属出生动画与语音。', p: '240 三角券', color: '#ff8c1a', glyph: 'M32 10 50 22v18L32 54 14 40V22Z' },
+    { n: 'M4A1「沙暴」涂装', d: '沙暴迷彩战术涂装，含击杀播报特效「沙暴降临」。', p: '120 三角券', color: '#e0b45a', glyph: 'M12 34h96l10-14h14v12l10 2v6h-18l-8 8h-8l4-8H24l-4 8H10z' },
+    { n: '头像框「吴家村守望者」', d: '纪念吴家村首个 S1 赛季 · 永久头像框。', p: '60 三角券', color: '#7dd069', glyph: 'M32 8 52 18v26L32 56 12 44V18Z' },
+    { n: '弹药补给礼包', d: '含 5.56/5.45 弹药各 240 发 + 医疗包 ×3（游戏内发放）。', p: '8,000 哈弗币', color: '#6ac3d8', glyph: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z' }
+  ];
+
+  function renderShop() {
+    const grid = $('shop-grid');
+    if (!grid) return;
+    grid.innerHTML = SHOP.map(s => `
+      <div class="df-shopcard">
+        <div class="art"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path d="${s.glyph}" fill="none" stroke="${s.color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <div class="n">${s.n}</div>
+        <div class="d">${s.d}</div>
+        <div class="df-price">${s.p}</div>
+        <button class="df-buy" data-name="${s.n}">购 买</button>
+      </div>`).join('');
+    grid.addEventListener('click', e => {
+      const btn = e.target.closest('.df-buy');
+      if (!btn) return;
+      toast(`「${btn.getAttribute('data-name')}」将随正式服开放购买`);
+    });
+  }
+
+  /* ---------- 初始化 ---------- */
+  function init() {
+    // 标签切换
+    els('.df-rail-btn[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    // 行动简报联动
+    const sel = $('map-select');
+    if (sel) sel.addEventListener('change', updateBrief);
+    updateBrief();
+    // 各面板内容
+    renderOperators();
+    renderGuns();
+    renderMissions();
+    renderShop();
+    // data-toast 占位按钮
+    document.addEventListener('click', e => {
+      const t = e.target.closest('[data-toast]');
+      if (t) toast(t.getAttribute('data-toast'));
+    });
+    // Enter 快速开始（焦点不在输入控件上时）
+    window.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const menu = $('menu');
+      if (!menu || menu.classList.contains('hidden')) return;
+      const ae = document.activeElement;
+      if (ae && ae.matches('input,select,textarea,button')) return;
+      const b = $('btn-single');
+      if (b) { e.preventDefault(); b.click(); }
+    });
+    // 结算/对局结束回到大厅时刷新档案
+    if (typeof DF !== 'undefined' && DF.quitToMenu) {
+      const _quit = DF.quitToMenu;
+      DF.quitToMenu = function () {
+        const r = _quit.apply(this, arguments);
+        switchTab('lobby');
+        if (typeof DF.renderProfile === 'function') DF.renderProfile();
+        return r;
+      };
+    }
+    if (typeof DF !== 'undefined' && DF.renderProfile) DF.renderProfile();
+  }
+
+  window.addEventListener('DOMContentLoaded', init);
+})();
 
 </script>
 </body>
