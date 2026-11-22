@@ -5394,8 +5394,30 @@ DF.WujiaMusic = (() => {
       controls.appendChild(clock);
       card.appendChild(controls);
 
+      // 桌面端监听 dblclick；iPad/iPhone 上额外识别 380ms 内同一区域的双击。
+      let lastSeekTap = 0;
+      let lastSeekPoint = null;
+      let suppressNativeDblClickUntil = 0;
+      seek.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+        const now = Date.now();
+        const point = { x: event.clientX, y: event.clientY };
+        const closeToLast = lastSeekPoint &&
+          Math.hypot(point.x - lastSeekPoint.x, point.y - lastSeekPoint.y) <= 38;
+        if (lastSeekTap && now - lastSeekTap <= 380 && closeToLast) {
+          event.preventDefault();
+          lastSeekTap = 0;
+          lastSeekPoint = null;
+          suppressNativeDblClickUntil = now + 500;
+          requestPlayback();
+          return;
+        }
+        lastSeekTap = now;
+        lastSeekPoint = point;
+      });
       seek.addEventListener('dblclick', event => {
         event.preventDefault();
+        if (Date.now() < suppressNativeDblClickUntil) return;
         requestPlayback();
       });
       seek.addEventListener('input', () => {
