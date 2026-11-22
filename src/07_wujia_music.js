@@ -1,6 +1,6 @@
 /* ============================================================
    吴家村专属小曲《十一笔》
-   累计击杀 100 人解锁；双击进度条输入口令“老鼠”后播放
+   累计击杀 100 人解锁；双击标题输入口令“老鼠”后播放
    ============================================================ */
 DF.WujiaMusic = (() => {
   const REQUIRED_KILLS = 100;
@@ -26,7 +26,7 @@ DF.WujiaMusic = (() => {
     const controls = document.getElementById('wujia-music-controls');
     if (progress) {
       progress.textContent = unlocked
-        ? '已解锁 · 累计击杀 ' + kills + ' 人 · 双击下方进度条输入口令播放'
+        ? '已解锁 · 累计击杀 ' + kills + ' 人 · 双击上方标题输入口令播放'
         : '累计击杀 ' + kills + ' / ' + REQUIRED_KILLS + ' · 还差 ' + (REQUIRED_KILLS - kills) + ' 人';
     }
     if (button) {
@@ -68,7 +68,7 @@ DF.WujiaMusic = (() => {
       return;
     }
     if (!authorized) {
-      if (typeof DF.toast === 'function') DF.toast('请双击下方进度条，并输入口令“老鼠”');
+      if (typeof DF.toast === 'function') DF.toast('请双击“吴家村秘曲 ·《十一笔》”标题，并输入口令“老鼠”');
       return;
     }
     try {
@@ -95,7 +95,7 @@ DF.WujiaMusic = (() => {
       seek.min = '0';
       seek.max = '1000';
       seek.value = '0';
-      seek.setAttribute('aria-label', '《十一笔》播放进度；双击输入口令播放');
+      seek.setAttribute('aria-label', '《十一笔》播放进度');
       seek.style.cssText = 'flex:1 1 180px;min-width:150px;accent-color:#ffb347;cursor:pointer;touch-action:pan-x';
       const clock = document.createElement('span');
       clock.id = 'wujia-music-time';
@@ -107,28 +107,34 @@ DF.WujiaMusic = (() => {
       controls.appendChild(clock);
       card.appendChild(controls);
 
-      // 双击《十一笔》标题触发口令；兼容桌面 dblclick 与 iPad/iPhone 触屏双击。
+      // 双击标题输入口令。以 click 事件为主，兼容 iPad/iPhone Safari 的触屏点击。
       const title = card.querySelector('.wm-title');
       if (title) {
         title.style.cursor = 'pointer';
+        title.style.touchAction = 'manipulation';
         title.setAttribute('role', 'button');
         title.setAttribute('tabindex', '0');
-        title.setAttribute('aria-label', '双击吴家村秘曲《十一笔》输入播放口令');
+        title.setAttribute('aria-label', '双击吴家村秘曲《十一笔》标题输入播放口令');
         let lastTitleTap = 0;
         let lastTitlePoint = null;
-        let suppressNativeDblClickUntil = 0;
-        title.addEventListener('pointerdown', event => {
-          if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+        let promptPending = false;
+        const triggerPassword = () => {
+          if (promptPending) return;
+          promptPending = true;
+          Promise.resolve(requestPlayback()).finally(() => {
+            promptPending = false;
+            lastTitleTap = 0;
+            lastTitlePoint = null;
+          });
+        };
+        title.addEventListener('click', event => {
           const now = Date.now();
           const point = { x: event.clientX, y: event.clientY };
           const closeToLast = lastTitlePoint &&
-            Math.hypot(point.x - lastTitlePoint.x, point.y - lastTitlePoint.y) <= 38;
-          if (lastTitleTap && now - lastTitleTap <= 420 && closeToLast) {
+            Math.hypot(point.x - lastTitlePoint.x, point.y - lastTitlePoint.y) <= 48;
+          if (lastTitleTap && now - lastTitleTap <= 650 && closeToLast) {
             event.preventDefault();
-            lastTitleTap = 0;
-            lastTitlePoint = null;
-            suppressNativeDblClickUntil = now + 500;
-            requestPlayback();
+            triggerPassword();
             return;
           }
           lastTitleTap = now;
@@ -136,13 +142,12 @@ DF.WujiaMusic = (() => {
         });
         title.addEventListener('dblclick', event => {
           event.preventDefault();
-          if (Date.now() < suppressNativeDblClickUntil) return;
-          requestPlayback();
+          triggerPassword();
         });
         title.addEventListener('keydown', event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            requestPlayback();
+            triggerPassword();
           }
         });
       }
