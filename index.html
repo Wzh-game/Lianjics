@@ -5394,32 +5394,45 @@ DF.WujiaMusic = (() => {
       controls.appendChild(clock);
       card.appendChild(controls);
 
-      // 桌面端监听 dblclick；iPad/iPhone 上额外识别 380ms 内同一区域的双击。
-      let lastSeekTap = 0;
-      let lastSeekPoint = null;
-      let suppressNativeDblClickUntil = 0;
-      seek.addEventListener('pointerdown', event => {
-        if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
-        const now = Date.now();
-        const point = { x: event.clientX, y: event.clientY };
-        const closeToLast = lastSeekPoint &&
-          Math.hypot(point.x - lastSeekPoint.x, point.y - lastSeekPoint.y) <= 38;
-        if (lastSeekTap && now - lastSeekTap <= 380 && closeToLast) {
+      // 双击《十一笔》标题触发口令；兼容桌面 dblclick 与 iPad/iPhone 触屏双击。
+      const title = card.querySelector('.wm-title');
+      if (title) {
+        title.style.cursor = 'pointer';
+        title.setAttribute('role', 'button');
+        title.setAttribute('tabindex', '0');
+        title.setAttribute('aria-label', '双击吴家村秘曲《十一笔》输入播放口令');
+        let lastTitleTap = 0;
+        let lastTitlePoint = null;
+        let suppressNativeDblClickUntil = 0;
+        title.addEventListener('pointerdown', event => {
+          if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+          const now = Date.now();
+          const point = { x: event.clientX, y: event.clientY };
+          const closeToLast = lastTitlePoint &&
+            Math.hypot(point.x - lastTitlePoint.x, point.y - lastTitlePoint.y) <= 38;
+          if (lastTitleTap && now - lastTitleTap <= 420 && closeToLast) {
+            event.preventDefault();
+            lastTitleTap = 0;
+            lastTitlePoint = null;
+            suppressNativeDblClickUntil = now + 500;
+            requestPlayback();
+            return;
+          }
+          lastTitleTap = now;
+          lastTitlePoint = point;
+        });
+        title.addEventListener('dblclick', event => {
           event.preventDefault();
-          lastSeekTap = 0;
-          lastSeekPoint = null;
-          suppressNativeDblClickUntil = now + 500;
+          if (Date.now() < suppressNativeDblClickUntil) return;
           requestPlayback();
-          return;
-        }
-        lastSeekTap = now;
-        lastSeekPoint = point;
-      });
-      seek.addEventListener('dblclick', event => {
-        event.preventDefault();
-        if (Date.now() < suppressNativeDblClickUntil) return;
-        requestPlayback();
-      });
+        });
+        title.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            requestPlayback();
+          }
+        });
+      }
       seek.addEventListener('input', () => {
         if (Number.isFinite(audio.duration) && audio.duration > 0) {
           audio.currentTime = (Number(seek.value) / 1000) * audio.duration;
