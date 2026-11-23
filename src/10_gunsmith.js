@@ -165,10 +165,34 @@
   const SKINS_KEY = 'df_skins';
   const loadSkins = () => { try { const a = JSON.parse(localStorage.getItem(SKINS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
   const saveSkins = a => { try { localStorage.setItem(SKINS_KEY, JSON.stringify(a)); } catch (e) { } };
+  /* 每把枪至多一套涂装 → 拥有即自动应用；调色板只覆盖可涂装部位（机匣/护木/枪托/弹匣） */
+  const SKIN_PALETTES = {
+    m4a1_sand:    { gun: 'm4a1',  body: 0x8a7648, body2: 0x6e5b33, tan: 0x9a8a5e },
+    ak74_ember:   { gun: 'ak74',  body: 0x5c2418, body2: 0x3c1610, wood: 0x7d3a22, bakelite: 0x8c4a24 },
+    mp5_jungle:   { gun: 'mp5',   body: 0x26382a, body2: 0x1a2a20, tan: 0x3d5c3e },
+    awm_frost:    { gun: 'awm',   body: 0xbcc8d2, body2: 0x8e9ca6, tan: 0xa4b2bc },
+    m7_obsidian:  { gun: 'm7',    body: 0x1b1b1f, body2: 0x262019, tan: 0x8a7434 },
+    pkm_scorch:   { gun: 'pkm',   body: 0x3a2a1e, body2: 0x241a12, tan: 0x5c3a22 },
+    m82_dune:     { gun: 'm82a1', body: 0xac9464, body2: 0x7d6a44, tan: 0xc2aa7a },
+    sks_amber:    { gun: 'sks',   body: 0x4c2c16, body2: 0x331e10, wood: 0x8c5424, bakelite: 0x7a3a1c },
+    vss_ghost:    { gun: 'vss',   body: 0x2b2d27, body2: 0x1f211b, tan: 0x3c3e35 }
+  };
   DF.skins = {
     owned: () => loadSkins(),
     isOn: key => loadSkins().includes(key),
-    own: key => { const a = loadSkins(); if (!a.includes(key)) { a.push(key); saveSkins(a); } }
+    own: key => { const a = loadSkins(); if (!a.includes(key)) { a.push(key); saveSkins(a); } },
+    list: () => Object.keys(SKIN_PALETTES),
+    paletteOf: key => SKIN_PALETTES[key] || null,
+    /** 该枪当前生效的涂装调色板（未拥有返回 null） */
+    paletteFor: gun => {
+      const owned = loadSkins();
+      const key = Object.keys(SKIN_PALETTES).find(k => SKIN_PALETTES[k].gun === gun && owned.includes(k));
+      return key ? SKIN_PALETTES[key] : null;
+    },
+    keyForGun: gun => {
+      const owned = loadSkins();
+      return Object.keys(SKIN_PALETTES).find(k => SKIN_PALETTES[k].gun === gun && owned.includes(k)) || '';
+    }
   };
 
   const GUN_SPECS = {
@@ -262,12 +286,6 @@
     });
     const w = DF.equippedWeapon();
     const spec = GUN_SPECS[w.gun] || GUN_SPECS.m4a1;
-    // 沙暴涂装：持有 m4a1_sand 且出战 M4A1 时，机匣/护木等换沙暴色（临时材质随枪组释放）
-    const sandOn = w.gun === 'm4a1' && DF.skins && DF.skins.isOn('m4a1_sand');
-    const sand = h => { const m = new T.MeshStandardMaterial({ color: h, roughness: 0.72, metalness: 0.35 }); m.__gmTemp = true; return m; };
-    const sandBody = sandOn ? sand(0x8a7648) : null;
-    const sandBody2 = sandOn ? sand(0x6e5b33) : null;
-    const sandTan = sandOn ? sand(0x9a8a5e) : null;
     const atts = (Array.isArray(w.atts) && w.atts.length === 5) ? w.atts : [0, 0, 0, 0, 0];
     const box = (x, y, z) => new T.BoxGeometry(x, y, z);
     const cyl = (r, len) => new T.CylinderGeometry(r, r, len, 12);
@@ -282,15 +300,15 @@
     const v3 = (hex, opacity) => { const m = new T.MeshStandardMaterial({ color: hex, roughness: 0.15, metalness: 0.3, transparent: true, opacity }); m.__gmTemp = true; return m; };
 
     // ===== 机匣 =====
-    add(box(spec.receiver[0], spec.receiver[1], spec.receiver[2]), sandBody || M.body, 0, 0, spec.receiverZ);
+    add(box(spec.receiver[0], spec.receiver[1], spec.receiver[2]), M.body, 0, 0, spec.receiverZ);
     // ===== 上导轨 =====
-    add(box(0.055, 0.024, spec.rail), sandBody2 || M.body2, 0, 0.062, spec.railZ);
+    add(box(0.055, 0.024, spec.rail), M.body2, 0, 0.062, spec.railZ);
     // ===== 护木 =====
-    add(box(spec.hand[0], spec.hand[1], spec.hand[2]), sandTan || M[spec.handMat] || M.tan, 0, -0.002, spec.handZ);
+    add(box(spec.hand[0], spec.hand[1], spec.hand[2]), M[spec.handMat] || M.tan, 0, -0.002, spec.handZ);
     // ===== 散热孔 =====
     for (let i = 0; i < (spec.vents || 0); i++) add(box(0.072, 0.012, 0.022), M.body, 0, 0.012, -0.30 - i * 0.055);
     // ===== 枪管 =====
-    const barrel = add(cyl(spec.barrelR, spec.barrelLen), sandBody || M.body, 0, 0.012, spec.barrelZ, Math.PI / 2);
+    const barrel = add(cyl(spec.barrelR, spec.barrelLen), M.body, 0, 0.012, spec.barrelZ, Math.PI / 2);
     // ===== VSS 一体消音套筒 =====
     if (spec.integralSupp) add(cyl(spec.integralSupp.r, spec.integralSupp.len), M.body2, 0, 0.012, spec.integralSupp.z, Math.PI / 2);
     // ===== M249 两脚架 =====
@@ -315,7 +333,7 @@
     const magMesh = add(magGeo, M[spec.magMat] || M.body2, 0, magCY, spec.receiverZ + 0.02, spec.magRot);
     if (spec.magRot) magMesh.rotation.x = spec.magRot;   // AK 弯弹匣
     // ===== 握把 =====
-    add(box(0.05, 0.15, 0.07), sandBody || M.body, 0, -0.12, 0.06, 0.28);
+    add(box(0.05, 0.15, 0.07), M.body, 0, -0.12, 0.06, 0.28);
     // ===== 前握把（配件位 3） =====
     if (atts[2] > 0) {
       const rot = atts[2] === 2 ? -0.4 : 0.12;
@@ -327,7 +345,7 @@
     if (atts[4] === 1) { stockScale = 0.78; stockLen *= 0.8; }
     else if (atts[4] === 3) { stockScale = 1.28; stockLen *= 1.12; }
     const stockCenter = 0.08 + stockLen / 2 - 0.02;
-    add(box(spec.stock[0] * stockScale, spec.stock[1] * stockScale, stockLen), sandBody2 || M[spec.stockMat] || M.body2, 0, -0.005, stockCenter);
+    add(box(spec.stock[0] * stockScale, spec.stock[1] * stockScale, stockLen), M[spec.stockMat] || M.body2, 0, -0.005, stockCenter);
     if (atts[4] === 2) add(box(0.034, 0.022, 0.11), M.rubber, 0, 0.045, stockCenter + 0.01);          // 战术托颊腮
     else if (atts[4] === 4) add(box(0.055, 0.1, 0.03), M.rubber, 0, -0.01, stockCenter + stockLen / 2 - 0.01, 0.35);  // 射手托底板
     // ===== 瞄具（配件位 1；0 = 原厂默认） =====
@@ -368,6 +386,36 @@
       lens.position.set(0, 0.122, -0.06 - len / 2 + 0.005); root.add(lens);
       redDot = add(new T.CircleGeometry(0.0028, 10), M.dot, 0, 0.122, -0.06 - len / 2 + 0.01);
       redDot.rotation.y = Math.PI;
+    }
+    // ===== 涂装（商城购买） ：按调色板替换可涂装部位材质，瞄具/镜片/橡胶/准星不动 =====
+    if (DF.skins && DF.skins.paletteFor) {
+      const pal = DF.skins.paletteFor(w.gun);
+      if (pal) {
+        const roleOf = new Map();
+        ['body', 'body2', 'tan', 'wood', 'bakelite'].forEach(r => { if (M[r]) roleOf.set(M[r], r); });
+        const cache = new Map();
+        const matFor = role => {
+          if (cache.has(role)) return cache.get(role);
+          let c = pal[role];
+          if (c == null) c = (role === 'body' || role === 'body2') ? pal.body : (pal.tan != null ? pal.tan : pal.body);
+          if (c == null) return null;
+          const m = new T.MeshStandardMaterial({
+            color: c,
+            roughness: role === 'wood' || role === 'bakelite' ? 0.84 : 0.66,
+            metalness: role === 'wood' || role === 'bakelite' ? 0.06 : 0.42
+          });
+          m.__gmTemp = true;
+          cache.set(role, m);
+          return m;
+        };
+        root.traverse(o => {
+          if (!o.isMesh || !o.material || o.material.__gmTemp) return;
+          const role = roleOf.get(o.material);
+          if (!role) return;
+          const m = matFor(role);
+          if (m) o.material = m;
+        });
+      }
     }
     // ===== 更新 vm 挂钩（装填动画 / ADS / 火光） =====
     vm.userData.mag = magMesh;

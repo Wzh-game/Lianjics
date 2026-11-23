@@ -49,8 +49,52 @@
   const loadOwnedOps = () => { try { const a = JSON.parse(localStorage.getItem(OPS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
   const saveOwnedOps = a => { try { localStorage.setItem(OPS_KEY, JSON.stringify(a)); } catch (e) { } };
   const FRAME_KEY = 'df_frame';
-  const hasFrame = () => { try { return localStorage.getItem(FRAME_KEY) === '1'; } catch (e) { return false; } };
-  const setFrame = v => { try { localStorage.setItem(FRAME_KEY, v ? '1' : '0'); } catch (e) { } };
+  const FRAMES = {
+    frame_wujia:       { n: '吴家村守望者', cls: 'f-wujia' },
+    frame_blackstone:  { n: '黑石铁壁',     cls: 'f-bs' },
+    frame_extractor:   { n: '撤离专家',     cls: 'f-ex' }
+  };
+  const frameId = () => {
+    try {
+      const v = localStorage.getItem(FRAME_KEY) || '';
+      if (v === '1') return 'frame_wujia';        // 旧存档兼容
+      return FRAMES[v] ? v : '';
+    } catch (e) { return ''; }
+  };
+  const hasFrame = () => !!frameId();
+  const FRAMES_OWNED_KEY = 'df_frames_owned';
+  const loadOwnedFrames = () => {
+    try { const a = JSON.parse(localStorage.getItem(FRAMES_OWNED_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  };
+  const saveOwnedFrames = a => { try { localStorage.setItem(FRAMES_OWNED_KEY, JSON.stringify(a)); } catch (e) { } };
+  /** 是否已拥有某个头像框（旧存档只有 df_frame='1' → 视为拥有守望者） */
+  const ownsFrame = id => {
+    if (!FRAMES[id]) return false;
+    if (loadOwnedFrames().includes(id)) return true;
+    if (id === 'frame_wujia') { try { return localStorage.getItem(FRAME_KEY) === '1' || frameId() === id; } catch (e) { return false; } }
+    return frameId() === id;
+  };
+  const ownFrame = id => { const a = loadOwnedFrames(); if (!a.includes(id)) { a.push(id); saveOwnedFrames(a); } };
+  const setFrame = v => {
+    try {
+      const id = (v === true || v === 1) ? 'frame_wujia' : (v === false || !v ? '0' : String(v));
+      if (FRAMES[id]) { ownFrame(id); localStorage.setItem(FRAME_KEY, id); }
+      else localStorage.setItem(FRAME_KEY, '0');
+    } catch (e) { }
+  };
+  /* 旧存档迁移：df_frame 里实际装备过的框补登为「已拥有」，换框后仍可切回 */
+  const migrateFrames = () => {
+    try {
+      const v = localStorage.getItem(FRAME_KEY) || '';
+      if (v === '1') { ownFrame('frame_wujia'); localStorage.setItem(FRAME_KEY, 'frame_wujia'); }
+      else if (FRAMES[v]) ownFrame(v);
+    } catch (e) { }
+  };
+  migrateFrames();
+
+  const NAMEFX_KEY = 'df_namefx';
+  const hasNameFx = () => { try { return localStorage.getItem(NAMEFX_KEY) === '1'; } catch (e) { return false; } };
+  const setNameFx = v => { try { localStorage.setItem(NAMEFX_KEY, v ? '1' : '0'); } catch (e) { } };
 
   /* ---------- 干员 ---------- */
   const OPERATORS = [
@@ -276,7 +320,15 @@
     const bar = $('player-xpbar');
     if (bar) bar.style.width = Math.round(p.levelProgress() * 100) + '%';
     const av = $('df-avatar-top');
-    if (av) av.classList.toggle('framed', hasFrame());
+    if (av) {
+      const fid = frameId();
+      av.classList.toggle('framed', !!fid);
+      Object.keys(FRAMES).forEach(k => av.classList.remove(FRAMES[k].cls));
+      if (fid && FRAMES[fid]) av.classList.add(FRAMES[fid].cls);
+      av.setAttribute('data-frame', fid || 'none');
+    }
+    const nick = $('name-input');
+    if (nick) nick.classList.toggle('name-gold', hasNameFx());
   }
   DF.renderTopBar = renderTopBar;
   function refreshMissionBadge() {
@@ -334,68 +386,231 @@
     });
   }
 
-  /* ---------- 商城（四件实物商品：钱货两讫，持久化生效） ---------- */
-  const SHOP = [
-    { id: 'op_bullot', n: '干员「莽兽」档案', d: 'S1 首发付费干员 · 重装突破型。购买即永久解锁出战（干员页可选）。', p: '240 三角券', price: 240, color: '#d06a6a', glyph: 'M32 10 50 22v18L32 54 14 40V22Z' },
-    { id: 'm4a1_sand', n: 'M4A1「沙暴」涂装', d: '沙暴迷彩战术涂装。购买后 M4A1 持枪模型自动换装沙暴配色。', p: '120 三角券', price: 120, color: '#e0b45a', glyph: 'M12 34h96l10-14h14v12l10 2v6h-18l-8 8h-8l4-8H24l-4 8H10z' },
-    { id: 'frame_wujia', n: '头像框「吴家村守望者」', d: 'S1 赛季永久头像框，点亮大厅头像。黑石行动任务奖励亦可获得。', p: '60 三角券', price: 60, color: '#7dd069', glyph: 'M32 8 52 18v26L32 56 12 44V18Z' },
-    { id: 'safe_plus', n: '扩容保险箱 +1 格', d: '安全箱永久 +1 格（最多 +2，当前基础 2 格 + 已购扩容）。阵亡也保得住更多物资。', p: '150 三角券', price: 150, color: '#c9a25a', glyph: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z' }
-  ];
-  const shopItemState = item => {
-    const prof = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile.data : null;
-    switch (item.id) {
-      case 'op_bullot': return { owned: loadOwnedOps().includes('bullot') };
-      case 'm4a1_sand': return { owned: !!(DF.skins && DF.skins.owned().includes('m4a1_sand')) };
-      case 'frame_wujia': return { owned: hasFrame() };
-      case 'safe_plus': { const n = prof ? (prof.safeBonus | 0) : 0; return { owned: n >= 2, count: n }; }
-      default: return { owned: false };
-    }
+  /* ============================================================
+     商城 v2.0：分类页签 · 双货币（三角券 / 哈弗币）· 稀有度 · 详情面板
+     —— 所有商品钱货两讫，真实生效并持久化
+     ============================================================ */
+  const HAFU_PER_DELTA = 260;          // 1 三角券 ≈ 260 哈弗币（一局撤离约 $2k~$8k）
+  const RARITY = {
+    common: { n: '普通', c: '#9aa78a' },
+    rare:   { n: '稀有', c: '#5fb0e8' },
+    epic:   { n: '史诗', c: '#b98ce8' },
+    legend: { n: '传说', c: '#ffb347' }
   };
-  function buyItem(item) {
-    const st = shopItemState(item);
-    if (item.id === 'safe_plus') {
+  const ART = {
+    rifle:  'M6 40h84l10-14h26v12l16 2v6h-30l-4 10h-12l4-10H52l-6 14H28l4-14H6z',
+    smg:    'M18 36h70l8-10h30v10l12 2v6h-24l-8 12H70l6-12H34l-4 10H18z',
+    sniper: 'M2 42h96l6-8h30v8h20v6h-24l-2 8h-12l2-8H60l-4 12H40l4-12H2z',
+    lmg:    'M10 38h88v-10h20v10l18 2v8h-28l-6 10h-14l6-10H46l-8 16H20l8-16H10z',
+    emblem: 'M32 8 52 18v26L32 56 12 44V18Z',
+    badge:  'M32 6 54 20v20L32 58 10 40V20Z',
+    square: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z'
+  };
+
+  const SHOP = [
+    /* ── 武器涂装（购买即自动应用到该枪，联机/单人同时生效） ── */
+    { id: 'm4a1_sand',   cat: 'skin', kind: 'skin', n: 'M4A1「沙暴」',      d: '沙暴迷彩战术涂装，机匣与护木换沙色系。出战 M4A1 时自动应用。', delta: 120, r: 'rare',    art: 'rifle',  feat: true },
+    { id: 'ak74_ember',  cat: 'skin', kind: 'skin', n: 'AK-74M「余烬」',    d: '暗红余烬涂装：木质护木转为赤褐、机匣压暗。出战 AK-74M 时生效。', delta: 140, r: 'epic',   art: 'rifle' },
+    { id: 'mp5_jungle',  cat: 'skin', kind: 'skin', n: 'MP5「雨林」',       d: '深绿雨林涂装，适合林区与河畔。出战 MP5 时生效。',               delta: 110, r: 'rare',   art: 'smg' },
+    { id: 'awm_frost',   cat: 'skin', kind: 'skin', n: 'AWM「极地」',       d: '极地白灰涂装，长枪管与弹匣同步换色。出战 AWM 时生效。',         delta: 180, r: 'epic',   art: 'sniper' },
+    { id: 'm7_obsidian', cat: 'skin', kind: 'skin', n: 'M7「黑曜」',        d: '黑曜石配色 + 哑金护木，S1 首发战斗步枪专属。出战 M7 时生效。',   delta: 160, r: 'epic',   art: 'rifle' },
+    { id: 'pkm_scorch',  cat: 'skin', kind: 'skin', n: 'PKM「焦土」',       d: '焦土焦褐涂装，弹链盒与枪管同步压暗。出战 PKM 时生效。',         delta: 150, r: 'rare',   art: 'lmg' },
+    { id: 'm82_dune',    cat: 'skin', kind: 'skin', n: 'M82A1「沙丘」',     d: '沙丘金涂装，反器材狙击的赛季主推外观。出战 M82A1 时生效。',     delta: 220, r: 'legend', art: 'sniper', feat: true },
+    { id: 'sks_amber',   cat: 'skin', kind: 'skin', n: 'SKS「琥珀」',       d: '琥珀木纹涂装，老枪新皮。出战 SKS 时生效。',                     delta: 130, r: 'rare',   art: 'rifle' },
+    { id: 'vss_ghost',   cat: 'skin', kind: 'skin', n: 'VSS「幽灵」',       d: '哑光幽灵涂装，配合一体消音器几乎不留轮廓。出战 VSS 时生效。',   delta: 170, r: 'epic',   art: 'sniper' },
+
+    /* ── 干员 ── */
+    { id: 'op_bullot',   cat: 'op', kind: 'op', n: '干员「莽兽」档案',       d: 'S1 首发付费干员 · 重装突破型。购买即永久解锁出战（干员页可选）。', delta: 240, r: 'legend', art: 'badge', feat: true },
+
+    /* ── 外观（头像框 / 呼号） ── */
+    { id: 'frame_wujia',      cat: 'cosmetic', kind: 'frame', n: '头像框「吴家村守望者」', d: 'S1 赛季永久头像框 · 绿色守望光环。黑石行动任务奖励亦可获得。', delta: 60,  r: 'rare',   art: 'emblem' },
+    { id: 'frame_blackstone', cat: 'cosmetic', kind: 'frame', n: '头像框「黑石铁壁」',     d: 'S1 主打头像框 · 猩红铁壁光环，比守望者更硬派。',               delta: 90,  r: 'epic',   art: 'emblem', feat: true },
+    { id: 'frame_extractor',  cat: 'cosmetic', kind: 'frame', n: '头像框「撤离专家」',     d: '撤离老兵的证明 · 赤金双环头像框。',                             delta: 80,  r: 'rare',   art: 'emblem' },
+    { id: 'name_gold',        cat: 'cosmetic', kind: 'namefx', n: '呼号特效「鎏金」',      d: '大厅顶部呼号变为鎏金描边并带柔光，永久生效。',                 delta: 100, r: 'epic',   art: 'badge' },
+
+    /* ── 补给 ── */
+    { id: 'safe_plus',   cat: 'supply', kind: 'safe', n: '扩容保险箱 +1 格',  d: '安全箱永久 +1 格（最多 +2，基础 2 格）。阵亡也保得住更多物资。', delta: 150, r: 'epic', art: 'square' }
+  ];
+
+  const SHOP_CATS = [
+    { id: 'featured', n: '精选' },
+    { id: 'skin',     n: '武器涂装' },
+    { id: 'op',       n: '干员' },
+    { id: 'cosmetic', n: '外观' },
+    { id: 'supply',   n: '补给' }
+  ];
+  let shopCat = 'featured';
+  let shopSel = (SHOP.find(i => i.feat) || SHOP[0]).id;
+
+  const PART_LABEL_KEYS = ['body', 'body2', 'tan', 'wood', 'bakelite'];
+  const PART_LABEL = { body: '机匣', body2: '枪身', tan: '护木', wood: '木托', bakelite: '胶木' };
+  const priceHafu = item => Math.ceil(item.delta * HAFU_PER_DELTA / 100) * 100;
+  const fmt = n => (n | 0).toLocaleString();
+
+  function shopState(item) {
+    const prof = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile.data : null;
+    switch (item.kind) {
+      case 'skin':   return { owned: !!(DF.skins && DF.skins.isOn(item.id)) };
+      case 'op':     return { owned: loadOwnedOps().includes('bullot') };
+      case 'frame':  return { owned: ownsFrame(item.id), equipped: frameId() === item.id };
+      case 'namefx': return { owned: hasNameFx() };
+      case 'safe': { const n = prof ? (prof.safeBonus | 0) : 0; return { owned: n >= 2, count: n }; }
+      default:       return { owned: false };
+    }
+  }
+
+  function buyItem(item, cur) {
+    const st = shopState(item);
+    if (item.kind === 'safe') {
       if ((DF.Profile.data.safeBonus | 0) >= 2) { toast('扩容保险箱已达上限（+2）'); return; }
-    } else if (st.owned) { toast(`「${item.n}」已拥有`); return; }
-    const price = item.price | 0;
-    const delta = DF.Profile.data.delta | 0;
-    if (delta < price) { toast(`三角券不足：还差 ${price - delta} 枚（对局任务可获取）`); return; }
-    DF.Profile.data.delta = delta - price;
-    switch (item.id) {
-      case 'op_bullot': saveOwnedOps([...loadOwnedOps(), 'bullot']); break;
-      case 'm4a1_sand': if (DF.skins) DF.skins.own('m4a1_sand'); break;
-      case 'frame_wujia': setFrame(true); break;
-      case 'safe_plus': DF.Profile.data.safeBonus = (DF.Profile.data.safeBonus | 0) + 1; break;
+    } else if (st.owned) {
+      toast(item.kind === 'frame' ? `「${item.n}」已拥有（可在详情里重新装备）` : `「${item.n}」已拥有`);
+      return;
+    }
+    const cost = cur === 'hafu' ? priceHafu(item) : item.delta;
+    const bal = cur === 'hafu' ? (DF.Profile.data.bank | 0) : (DF.Profile.data.delta | 0);
+    if (bal < cost) {
+      toast(cur === 'hafu'
+        ? `哈弗币不足：还差 ${fmt(cost - bal)}（撤离带出物资可获得哈弗币）`
+        : `三角券不足：还差 ${cost - bal} 枚（大厅任务奖励可获得）`);
+      return;
+    }
+    if (cur === 'hafu') DF.Profile.data.bank = bal - cost; else DF.Profile.data.delta = bal - cost;
+    switch (item.kind) {
+      case 'skin':   if (DF.skins) DF.skins.own(item.id); break;
+      case 'op':     saveOwnedOps([...loadOwnedOps(), 'bullot']); break;
+      case 'frame':  ownFrame(item.id); setFrame(item.id); break;
+      case 'namefx': setNameFx(true); break;
+      case 'safe':   DF.Profile.data.safeBonus = (DF.Profile.data.safeBonus | 0) + 1; break;
     }
     DF.Profile.save();
-    toast(`「${item.n}」购买成功`);
+    const payTxt = cur === 'hafu' ? `${fmt(cost)} 哈弗币` : `${cost} 三角券`;
+    toast(`「${item.n}」购买成功 · 已支付 ${payTxt}`);
     renderShop();
     renderOperators();
     renderTopBar();
     if (DF.renderProfile) DF.renderProfile();
     if (DF.syncViewModel) DF.syncViewModel();
   }
+
+  /* 已拥有（不可再买）的商品也允许「装备」：头像框切换 / 涂装提示 */
+  function equipItem(item) {
+    if (item.kind === 'frame') {
+      setFrame(item.id);
+      toast(`已装备「${FRAMES[item.id].n}」头像框`);
+    } else if (item.kind === 'skin') {
+      toast(`「${item.n}」为自动应用，出战 ${item.n.split('「')[0]} 即可查看`);
+    } else {
+      return;
+    }
+    renderTopBar();
+    renderShop();
+  }
+
+  function shopCard(item) {
+    const st = shopState(item);
+    const rar = RARITY[item.r] || RARITY.common;
+    const pal = item.kind === 'skin' && DF.skins ? DF.skins.paletteOf(item.id) : null;
+    const stroke = pal ? '#' + (pal.body | 0x101010).toString(16).padStart(6, '0') : rar.c;
+    const swatch = pal
+      ? `<div class="df-skinrow">${PART_LABEL_KEYS
+          .filter(k => pal[k] != null)
+          .map(k => `<i style="background:#${(pal[k] | 0x080808).toString(16).padStart(6, '0')}"></i>`).join('')}</div>`
+      : '';
+    const countNote = (item.kind === 'safe' && st.count > 0) ? ` <em>已购 ×${st.count}</em>` : '';
+    return `
+      <div class="df-shopcard r-${item.r}${item.id === shopSel ? ' sel' : ''}" data-id="${item.id}" role="button" tabindex="0" aria-label="${item.n}">
+        <div class="df-rcorner"></div>
+        <div class="art"><svg viewBox="0 0 200 64" width="100%" height="64" aria-hidden="true"><path d="${ART[item.art] || ART.rifle}" fill="none" stroke="${stroke}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        ${swatch}
+        <div class="df-rar" style="color:${rar.c}">${rar.n}${countNote}</div>
+        <div class="n">${item.n}</div>
+        <div class="d">${item.d}</div>
+        <div class="df-price">
+          <span class="c-delta">Δ ${item.delta}</span>
+          <span class="c-hafu">H ${fmt(priceHafu(item))}</span>
+        </div>
+        <div class="df-buystate">${st.owned ? ((item.kind === 'frame' && frameId() === item.id) ? '使用中' : (item.kind === 'frame' ? '已拥有 · 可装备' : '已拥有')) : (item.kind === 'safe' ? `可购买 ×${st.count}` : '可购买')}</div>
+      </div>`;
+  }
+
+  function renderShopDetail() {
+    const side = $('shop-detail');
+    if (!side) return;
+    const item = SHOP.find(i => i.id === shopSel);
+    if (!item) { side.innerHTML = ''; return; }
+    const st = shopState(item);
+    const rar = RARITY[item.r] || RARITY.common;
+    const pal = item.kind === 'skin' && DF.skins ? DF.skins.paletteOf(item.id) : null;
+    const stroke = pal ? '#' + (pal.body | 0x101010).toString(16).padStart(6, '0') : rar.c;
+    const canBuy = item.kind === 'safe' ? (st.count < 2) : !st.owned;
+    const equippedNow = item.kind === 'frame' && frameId() === item.id;
+    const ownedFrameNotEq = item.kind === 'frame' && st.owned && !equippedNow;
+    const hafu = priceHafu(item);
+    const balDelta = DF.Profile ? (DF.Profile.data.delta | 0) : 0;
+    const balHafu = DF.Profile ? (DF.Profile.data.bank | 0) : 0;
+    side.innerHTML = `
+      <div class="df-sd-head r-${item.r}">
+        <div class="df-sd-art"><svg viewBox="0 0 200 64" width="100%" height="86" aria-hidden="true"><path d="${ART[item.art] || ART.rifle}" fill="none" stroke="${stroke}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <div class="df-sd-rar" style="color:${rar.c}">${rar.n}</div>
+        <div class="df-sd-name">${item.n}</div>
+        <div class="df-sd-desc">${item.d}</div>
+        ${pal ? `<div class="df-sd-pal">${PART_LABEL_KEYS.filter(k => pal[k] != null)
+          .map(k => `<span><i style="background:#${(pal[k] | 0x080808).toString(16).padStart(6, '0')}"></i>${PART_LABEL[k]}</span>`).join('')}</div>` : ''}
+        <div class="df-sd-btns">
+          ${canBuy ? `
+            <button class="df-sd-buy delta" data-buy="delta" data-id="${item.id}"><b>Δ ${item.delta}</b><span>用三角券 · 余 ${fmt(balDelta)}</span></button>
+            <button class="df-sd-buy hafu" data-buy="hafu" data-id="${item.id}"><b>H ${fmt(hafu)}</b><span>用哈弗币 · 余 ${fmt(balHafu)}</span></button>`
+          : `<button class="df-sd-buy owned" disabled><b>${equippedNow ? '使用中' : '已拥有'}</b><span>${item.kind === 'skin' ? '出战该枪即自动应用' : '无需重复购买'}</span></button>
+             ${ownedFrameNotEq ? `<button class="df-sd-buy eq" data-eq="1" data-id="${item.id}"><b>装备</b><span>设为当前头像框</span></button>` : ''}`}
+        </div>
+        <div class="df-sd-note">汇率 1 三角券 = ${HAFU_PER_DELTA} 哈弗币 · 购买即时生效并永久保存</div>
+      </div>`;
+  }
+
   function renderShop() {
+    const tabs = $('shop-tabs');
     const grid = $('shop-grid');
     if (!grid) return;
-    grid.innerHTML = SHOP.map(s => {
-      const st = shopItemState(s);
-      const countNote = (s.id === 'safe_plus' && st.count > 0) ? `（已购 ×${st.count}）` : '';
-      const btn = st.owned ? '已 拥 有' : '购 买';
-      return `
-      <div class="df-shopcard">
-        <div class="art"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path d="${s.glyph}" fill="none" stroke="${s.color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
-        <div class="n">${s.n}</div>
-        <div class="d">${s.d}</div>
-        <div class="df-price">${s.p}${countNote}</div>
-        <button class="df-buy" data-id="${s.id}" ${st.owned ? 'disabled' : ''}>${btn}</button>
-      </div>`;
-    }).join('');
+    if (tabs) {
+      tabs.innerHTML = SHOP_CATS.map(c => {
+        const n = c.id === 'featured' ? SHOP.filter(i => i.feat).length : SHOP.filter(i => i.cat === c.id).length;
+        return `<button class="df-shoptab${c.id === shopCat ? ' active' : ''}" data-cat="${c.id}">${c.n}<em>${n}</em></button>`;
+      }).join('');
+      wireOnce(tabs, '__shopTabsWired', e => {
+        const b = e.target.closest('.df-shoptab');
+        if (!b) return;
+        shopCat = b.getAttribute('data-cat');
+        const first = shopList()[0];
+        if (first) shopSel = first.id;
+        renderShop();
+      });
+    }
+    grid.innerHTML = shopList().map(shopCard).join('');
     wireOnce(grid, '__shopWired', e => {
-      const btn = e.target.closest('.df-buy');
-      if (!btn || btn.disabled) return;
-      const item = SHOP.find(x => x.id === btn.getAttribute('data-id'));
-      if (item) buyItem(item);
+      const card = e.target.closest('.df-shopcard');
+      if (!card) return;
+      shopSel = card.getAttribute('data-id');
+      grid.querySelectorAll('.df-shopcard').forEach(c => c.classList.toggle('sel', c === card));
+      renderShopDetail();
     });
+    grid.querySelectorAll('.df-shopcard').forEach(c => {
+      c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); c.click(); } });
+    });
+    renderShopDetail();
+    const side = $('shop-detail');
+    wireOnce(side, '__shopSideWired', e => {
+      const b = e.target.closest('.df-sd-buy');
+      if (!b || b.disabled) return;
+      const item = SHOP.find(x => x.id === b.getAttribute('data-id'));
+      if (!item) return;
+      if (b.hasAttribute('data-eq')) { equipItem(item); return; }
+      const cur = b.getAttribute('data-buy');
+      if (cur === 'delta' || cur === 'hafu') buyItem(item, cur);
+    });
+  }
+  function shopList() {
+    return shopCat === 'featured' ? SHOP.filter(i => i.feat) : SHOP.filter(i => i.cat === shopCat);
   }
 
   /* ---------- 初始化 ---------- */

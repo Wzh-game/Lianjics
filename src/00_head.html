@@ -659,18 +659,68 @@ body.touchmode #joystickHint{display:none}
 .df-shopbanner .t{font-size:17px;font-weight:900;letter-spacing:2px;color:#ffe1a8}
 .df-shopbanner .d{font-size:11px;color:#a99a72;letter-spacing:1px;margin-top:3px}
 .df-shopbanner .tag{background:var(--accent);color:#1a1206;font-size:10px;font-weight:900;padding:3px 10px;letter-spacing:2px}
-.df-shopgrid{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
-.df-shopcard{width:228px;background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:14px;text-align:center;backdrop-filter:blur(4px)}
-.df-shopcard .art{height:84px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.df-shoptabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.df-shoptab{background:rgba(13,17,10,.9);border:1px solid #3a4629;color:#b8c2a4;padding:7px 14px;
+  font-family:inherit;font-size:12px;letter-spacing:2px;cursor:pointer;transition:all .15s}
+.df-shoptab em{font-style:normal;font-size:10px;color:#7b866c;margin-left:6px}
+.df-shoptab:hover{border-color:#6a7a52;color:#e6eed6}
+.df-shoptab.active{border-color:var(--accent);color:#fff;background:rgba(255,140,26,.16)}
+.df-shoptab.active em{color:#ffc98a}
+.df-shopwrap{display:flex;gap:14px;align-items:flex-start;margin-top:12px;flex-wrap:wrap}
+.df-shopgrid{display:flex;gap:14px;flex-wrap:wrap;flex:1 1 420px;min-width:0}
+.df-shopside{width:320px;flex:none}
+.df-shopcard{position:relative;width:228px;background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:14px 14px 10px;
+  text-align:center;backdrop-filter:blur(4px);cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}
+.df-shopcard:hover{transform:translateY(-3px);border-color:#6a7a52}
+.df-shopcard.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 22px rgba(255,140,26,.22);transform:translateY(-3px)}
+.df-rcorner{position:absolute;left:-1px;top:-1px;width:40px;height:3px;background:#9aa78a}
+.r-rare .df-rcorner{background:#5fb0e8;box-shadow:0 0 10px rgba(95,176,232,.9)}
+.r-epic .df-rcorner{background:#b98ce8;box-shadow:0 0 10px rgba(185,140,232,.9)}
+.r-legend .df-rcorner{background:#ffb347;box-shadow:0 0 12px rgba(255,179,71,.95)}
+.df-shopcard .art{height:70px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
+.df-skinrow{display:flex;gap:4px;justify-content:center;margin:0 0 8px}
+.df-skinrow i{width:18px;height:6px;border:1px solid rgba(255,255,255,.18)}
+.df-rar{font-size:9.5px;letter-spacing:3px;font-weight:800;margin-bottom:4px}
+.df-rar em{font-style:normal;color:#7b866c;letter-spacing:1px}
 .df-shopcard .n{font-size:14px;font-weight:800;letter-spacing:1px}
 .df-shopcard .d{font-size:10.5px;color:#9aa78a;line-height:1.6;min-height:48px;margin:6px 0}
-.df-price{display:flex;align-items:center;justify-content:center;gap:6px;color:#ffe9b0;font-size:16px;font-weight:800;margin-bottom:8px}
-.df-buy{width:100%;background:#2f3a24;border:1px solid var(--line);color:#dfe6cc;padding:8px 0;cursor:pointer;
-  font-family:inherit;letter-spacing:3px;font-size:12px}
-.df-buy:hover{border-color:var(--accent);color:#fff}
+.df-price{display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:800;margin-bottom:8px}
+.df-price .c-delta{color:#9fd0ff}
+.df-price .c-hafu{color:#ffe9b0}
+.df-buystate{font-size:10.5px;letter-spacing:2px;color:#7b866c;border-top:1px solid rgba(255,255,255,.08);padding-top:7px}
+.df-shopcard.sel .df-buystate{color:var(--accent)}
+.df-sd-head{background:rgba(13,17,10,.95);border:1px solid #3a4629;border-left:3px solid var(--accent);padding:16px;
+  backdrop-filter:blur(4px);position:sticky;top:10px}
+.df-sd-art{margin:0 0 8px}
+.df-sd-rar{font-size:10px;letter-spacing:3px;font-weight:800}
+.df-sd-name{font-size:17px;font-weight:900;letter-spacing:1px;margin:5px 0 8px;color:#f2f6e6}
+.df-sd-desc{font-size:11.5px;color:#9aa78a;line-height:1.75;min-height:58px}
+.df-sd-pal{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;font-size:9.5px;color:#7b866c}
+.df-sd-pal span{display:flex;align-items:center;gap:4px}
+.df-sd-pal i{width:14px;height:14px;border:1px solid rgba(255,255,255,.2)}
+.df-sd-btns{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.df-sd-buy{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;
+  background:#20271a;border:1px solid var(--line);color:#dfe6cc;font-family:inherit;cursor:pointer;font-size:12px;
+  transition:all .15s;text-align:left}
+.df-sd-buy b{font-size:14px;letter-spacing:1px}
+.df-sd-buy span{font-size:10px;color:#8d9a7d;letter-spacing:1px}
+.df-sd-buy.delta b{color:#9fd0ff}
+.df-sd-buy.hafu b{color:#ffd98a}
+.df-sd-buy.delta:hover{border-color:#9fd0ff;background:#1c2a33}
+.df-sd-buy.hafu:hover{border-color:#ffb347;background:#2e2718}
+.df-sd-buy.owned,.df-sd-buy:disabled{opacity:.55;cursor:default}
+.df-sd-buy.eq{border-color:#7dd069}
+.df-sd-buy.eq b{color:#7dd069}
+.df-sd-buy.eq:hover{background:#1e2a1a}
+.df-sd-note{font-size:9.5px;color:#65705a;margin-top:10px;letter-spacing:1px;line-height:1.6}
+.df-avatar.f-bs{box-shadow:0 0 0 2px #141a0e,0 0 0 4px #d0503a,0 0 20px rgba(208,80,58,.55);border-radius:10px}
+.df-avatar.f-ex{box-shadow:0 0 0 2px #141a0e,0 0 0 4px #ffd15c,0 0 20px rgba(255,209,92,.55);border-radius:10px}
+.df-nick.name-gold{color:#ffd15c!important;text-shadow:0 0 10px rgba(255,200,60,.6)}
 /* ---------- 响应式 ---------- */
 @media (max-width:1180px){
   .df-logo{font-size:48px}
+  .df-shopside{width:100%}
+  .df-sd-head{position:static}
   .df-brief{width:330px}
   .df-cta-main{font-size:25px;padding:16px 26px 16px 32px}
   .df-grid.ops,.df-grid.guns{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -921,7 +971,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.9.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.10.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -978,9 +1028,13 @@ body.touchmode #joystickHint{display:none}
 
     <!-- ───────── 商城 ───────── -->
     <section class="df-panel" data-panel="shop">
-      <div class="df-title">商城<small>SUPPLY · S1 赛季首发补给</small></div>
-      <div class="df-shopbanner"><div><div class="t">S1 · 黑石行动 首发补给</div><div class="d">限时档案：干员「红狼」· M4A1「沙暴」涂装 · 头像框「吴家村守望者」</div></div><span class="tag">S1 限时</span></div>
-      <div class="df-shopgrid" id="shop-grid"></div>
+      <div class="df-title">商城<small>SUPPLY · 涂装 · 干员 · 外观 · 双货币结算</small></div>
+      <div class="df-shopbanner"><div><div class="t">S1 · 黑石行动 首发补给</div><div class="d">9 套武器涂装 · 4 种外观 · 干员档案 · 保险箱扩容 ｜ 三角券与哈弗币皆可结算</div></div><span class="tag">S1 限时</span></div>
+      <div class="df-shoptabs" id="shop-tabs" role="tablist"></div>
+      <div class="df-shopwrap">
+        <div class="df-shopgrid" id="shop-grid"></div>
+        <aside class="df-shopside" id="shop-detail" aria-live="polite"></aside>
+      </div>
     </section>
 
   </main>
