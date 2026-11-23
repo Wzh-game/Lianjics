@@ -171,7 +171,7 @@ DF.closeLootUI = function () {
   const me = DF.players.get(DF.myId);
   if (me) { if (me.inv) me.inv.items = []; me.currentContainer = null; }
   if (!DF.touch.enabled && DF.matchRunning && !DF.matchOver) {
-    DF.renderer.domElement.requestPointerLock && DF.renderer.domElement.requestPointerLock();
+    DF.requestPointerLockSafe(DF.renderer.domElement);
   }
 };
 

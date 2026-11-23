@@ -165,6 +165,7 @@ DF.createPlayer = function (opt) {
     respawnAt: 0, killedBy: '', lastDamageTime: 0, lastAttacker: '',
     walkPhase: 0, aimT: 0, deathT: 0,
     input: { f: 0, s: 0, jump: false, fire: false, ads: false, reload: false, sprint: false },
+    weapon: (typeof DF.stockWeapon === 'function' ? DF.stockWeapon() : { gun: 'm4a1', atts: [0, 0, 0, 0, 0] }),
     aimYaw: 0, aimPitch: 0,           // 机器人瞄准
     botState: 'roam', botTarget: new T.Vector3(), botNextThink: 0, botStrafe: 0, _searchT: 0, _searchCd: 0, _lootTarget: null
   };
@@ -678,7 +679,8 @@ DF.hostShoot = function (shooter, origin, dir, isBot) {
   const victim = res.player;
   DF.fx.blood(res.point);
   DF.net && DF.net.hostBroadcastFx({ t: 'bld', p: [res.point.x, res.point.y, res.point.z] });
-  const dmg = res.part === 'head' ? CFG.dmgHead : (res.part === 'leg' ? CFG.dmgLeg : CFG.dmgBody);
+  const dmgMult = (DF.effDmg ? DF.effDmg(shooter) : 1);
+  const dmg = Math.round((res.part === 'head' ? CFG.dmgHead : (res.part === 'leg' ? CFG.dmgLeg : CFG.dmgBody)) * dmgMult);
   DF.hostDamage(victim.id, dmg, shooter.id, res.part);
 };
 
@@ -786,15 +788,17 @@ DF.regenTick = function (dt) {
 };
 
 DF.startReload = function (p) {
-  if (p.reloading || p.ammo >= CFG.mag || p.reserve <= 0) return;
+  const effMag = (DF.effMag ? DF.effMag(p) : CFG.mag);
+  const effReload = (DF.effReload ? DF.effReload(p) : CFG.reloadTime);
+  if (p.reloading || p.ammo >= effMag || p.reserve <= 0) return;
   p.reloading = true;
-  p.reloadEnd = DF.time + CFG.reloadTime;
+  p.reloadEnd = DF.time + effReload;
   DF.net && DF.net.hostBroadcast({ t: 'rl', id: p.id });
 };
 DF.finishReload = function (p) {
   if (!p.reloading) return;
   p.reloading = false;
-  const need = CFG.mag - p.ammo;
+  const need = (DF.effMag ? DF.effMag(p) : CFG.mag) - p.ammo;
   const take = Math.min(need, p.reserve);
   p.ammo += take; p.reserve -= take;
   DF.net && DF.net.hostBroadcast({ t: 'sa', id: p.id, ammo: p.ammo, res: p.reserve });

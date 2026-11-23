@@ -327,6 +327,54 @@ body.touchmode #joystickHint{display:none}
 #wujia-music-btn.playing{background:rgba(105,64,20,.96);border-color:#ffbf62;color:#fff}
 @media(max-width:760px){#wujia-music-btn{top:116px;right:12px;padding:7px 10px;font-size:11px}}
 
+/* ===== 枪械工坊 ===== */
+.df-armory-wrap{display:grid;grid-template-columns:290px 1fr;gap:16px;margin-top:14px;align-items:start}
+.df-gunlist{display:flex;flex-direction:column;gap:10px;max-height:62vh;overflow-y:auto;padding-right:2px}
+.df-gcard{background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:10px 12px;cursor:pointer;transition:all .15s;display:flex;gap:10px;align-items:center;backdrop-filter:blur(4px);position:relative}
+.df-gcard:hover{border-color:#6d7f4a}
+.df-gcard.sel{border-color:var(--accent);box-shadow:0 0 16px rgba(255,140,26,.14) inset}
+.df-gcard.locked{opacity:.72}
+.df-gcard svg{width:78px;height:34px;flex:none}
+.df-gcard .gn{font-size:13px;font-weight:800;letter-spacing:.5px}
+.df-gcard .gno{font-size:9px;color:#6f7d55;letter-spacing:1px}
+.df-gcard .gs{font-size:9px;letter-spacing:1px;margin-top:2px}
+.df-gcard .gs.own{color:#8fd06a}
+.df-gcard .gs.lk{color:#c9a25a}
+.df-equipped{position:absolute;top:6px;right:8px;background:var(--accent);color:#1a1206;font-size:9px;font-weight:900;padding:1px 6px;letter-spacing:1px}
+.df-gunsmith{background:rgba(13,17,10,.93);border:1px solid #3a4629;padding:16px 18px;backdrop-filter:blur(4px);
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,0 100%)}
+.df-gs-head{display:flex;align-items:center;gap:16px;border-bottom:1px solid #2c3623;padding-bottom:14px;margin-bottom:14px}
+.df-gs-icon{flex:none;width:170px;height:74px;background:#151b10;border:1px solid #2c3623;display:flex;align-items:center;justify-content:center}
+.df-gs-icon svg{width:150px;height:56px}
+.df-gs-nm{font-size:19px;font-weight:900;letter-spacing:2px;color:#fff}
+.df-gs-no{font-size:10px;color:#6f7d55;letter-spacing:2px;margin:2px 0 6px}
+.df-gs-own{font-size:11px;color:#8fd06a;letter-spacing:1px}
+.df-gs-lk{font-size:11px;color:#c9a25a;letter-spacing:1px}
+.df-gs-equip{margin-left:auto;flex:none;background:linear-gradient(180deg,#ffb02e,#f08c0a 60%,#c96a06);border:1px solid #ffd27a;color:#221200;
+  font-family:inherit;font-size:13px;font-weight:900;letter-spacing:3px;padding:11px 20px;cursor:pointer;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.df-gs-equip:hover{filter:brightness(1.1)}
+.df-gs-equip.locked{opacity:.55;cursor:not-allowed;filter:none;background:#2f3a24;border-color:var(--line);color:#c9a25a}
+.df-gs-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 18px;margin-bottom:14px}
+.df-gs-stat{font-size:9.5px;color:var(--dim);letter-spacing:1px}
+.df-gs-stat b{color:#b8c2a4;font-weight:600;float:right}
+.df-gs-bar{height:4px;background:rgba(255,255,255,.12);margin-top:3px}
+.df-gs-bar i{display:block;height:100%;background:linear-gradient(90deg,#ffb347,#ff8c1a)}
+.df-gs-delta{font-size:9px;margin-left:5px}
+.df-up{color:#8fd06a}.df-dn{color:#ff6b5e}.df-fl{color:#77846a}
+.df-gs-slot{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #232b1b}
+.df-gs-slotname{flex:none;width:64px;font-size:12px;color:var(--accent2);letter-spacing:2px}
+.df-gs-opts{display:flex;gap:6px;flex-wrap:wrap}
+.df-gs-opt{background:#141a10;border:1px solid #37402a;color:#aeb898;font-size:11px;letter-spacing:.5px;
+  padding:5px 10px;cursor:pointer;font-family:inherit;transition:all .12s;position:relative}
+.df-gs-opt:hover{border-color:#6d7f4a;color:#fff}
+.df-gs-opt.sel{border-color:var(--accent);color:#ffb347;background:rgba(255,140,26,.08)}
+.df-gs-foot{display:flex;align-items:center;gap:14px;margin-top:12px;border-top:1px solid #2c3623;padding-top:12px}
+.df-gs-reset{background:transparent;border:1px solid #4a5a38;color:#aeb898;font-size:11px;letter-spacing:2px;padding:6px 14px;cursor:pointer;font-family:inherit}
+.df-gs-reset:hover{border-color:var(--accent);color:#fff}
+.df-gs-hint{font-size:11px;color:#77846a;letter-spacing:1px}
+@media (max-width:1180px){.df-armory-wrap{grid-template-columns:1fr}.df-gunlist{max-height:none;flex-direction:row;flex-wrap:wrap}.df-gcard{min-width:190px;flex:1}}
+
 </style>
 </head>
 <body>
@@ -687,7 +735,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.5.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.6.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -698,8 +746,11 @@ body.touchmode #joystickHint{display:none}
 
     <!-- ───────── 枪械库 ───────── -->
     <section class="df-panel" data-panel="armory">
-      <div class="df-title">枪械库<small>ARMORY · 武器鉴定与解锁进度</small></div>
-      <div class="df-grid guns" id="gun-grid"></div>
+      <div class="df-title">枪械库<small>ARMORY · 自由改装 · 六把枪均可更换配件</small></div>
+      <div class="df-armory-wrap">
+        <div class="df-gunlist" id="gun-grid"></div>
+        <div class="df-gunsmith" id="gunsmith"></div>
+      </div>
     </section>
 
     <!-- ───────── 仓库 ───────── -->

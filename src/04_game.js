@@ -286,7 +286,7 @@ DF.closeChat = function () {
   document.getElementById('chatwrap').classList.add('hidden');
   document.getElementById('chatinput').blur();
   const cv = DF.renderer.domElement;
-  if (DF.matchRunning && !DF.matchOver && !DF.touch.enabled) cv.requestPointerLock();
+  if (DF.matchRunning && !DF.matchOver && !DF.touch.enabled) DF.requestPointerLockSafe(cv);
 };
 function I_unlock() { if (document.pointerLockElement) document.exitPointerLock(); }
 
@@ -594,7 +594,7 @@ DF.bindUI = function () {
   $('btn-guest-gen').onclick = () => DF.guestGenerateAnswer();
   $('btn-copy-answer').onclick = () => DF.copyText($('guest-answer').value);
   $('btn-resume').onclick = () => {
-    if (!DF.touch.enabled) DF.renderer.domElement.requestPointerLock();
+    if (!DF.touch.enabled) DF.requestPointerLockSafe(DF.renderer.domElement);
     DF.showPause(false);
     if (DF.touch.enabled) DF.showHUD(true);
   };
@@ -850,7 +850,8 @@ DF.spawnPlayer = function (p) {
   const sp = DF.pickSpawn();
   p.pos.copy(sp);
   p.vel.set(0, 0, 0); p.vy = 0; p.onGround = true;
-  p.hp = CFG.maxHp; p.alive = true; p.ammo = CFG.mag; p.reserve = 90;
+  p.hp = CFG.maxHp; p.alive = true; p.weapon = (p.id === DF.myId && DF.equippedWeapon) ? DF.equippedWeapon() : p.weapon;
+  p.ammo = DF.effMag ? DF.effMag(p) : CFG.mag; p.reserve = 90;
   p.reloading = false; p.crouch = false; p.kills = p.kills || 0;
   p.yaw = Math.atan2(-(0 - sp.x), -(0 - sp.z));  // 朝地图中心
   p.pitch = 0;
@@ -1097,7 +1098,7 @@ DF.beginPlay = function () {
     DF.input.fire = false;
     DF.touch.f = 0; DF.touch.s = 0;
   } else {
-    DF.renderer.domElement.requestPointerLock && DF.renderer.domElement.requestPointerLock();
+    DF.requestPointerLockSafe(DF.renderer.domElement);
   }
   const me = DF.players.get(DF.myId);
   if (me) { me.crouch = false; me.ads = false; DF.camKick.pitch = 0; }
@@ -1324,7 +1325,7 @@ DF.M.onLocalRespawn = function () {
   document.getElementById('healthwrap').style.opacity = 1;
   const me = DF.players.get(DF.myId);
   if (me) { DF.camera.position.set(me.pos.x, me.pos.y + CFG.eye, me.pos.z); me.crouch = false; }
-  if (DF.matchRunning && !DF.touch.enabled) DF.renderer.domElement.requestPointerLock && DF.renderer.domElement.requestPointerLock();
+  if (DF.matchRunning && !DF.touch.enabled) DF.requestPointerLockSafe(DF.renderer.domElement);
   DF.input.fire = false; DF.touch.fireHeld = false;
   DF.vmRecoil = 0;
 };
@@ -1538,8 +1539,8 @@ DF.tryLocalFire = function () {
   DF.Audio.shot();
   DF.fx.flash();
   DF.vmRecoil = 1;
-  // 后坐力
-  const kick = me.ads ? 0.006 : 0.012;
+  // 后坐力（按枪械改装倍率）
+  const kick = (me.ads ? 0.006 : 0.012) * (DF.effRecoil ? DF.effRecoil(me) : 1);
   DF.camKick.pitch += kick * rnd(0.7, 1.3);
   DF.camKick.yaw += kick * rnd(-0.6, 0.6);
 
@@ -1548,7 +1549,10 @@ DF.tryLocalFire = function () {
   cam.getWorldPosition(origin);
   const dir = new T.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
   // 弹道散布
-  const spread = me.ads ? CFG.adsSpread : (me.crouch ? CFG.spread * 0.7 : CFG.spread + Math.min(0.02, Math.hypot(me.vel.x, me.vel.z) * 0.0035));
+  const effSpr = DF.effSpread ? DF.effSpread(me) : 1;
+  const effAds = DF.effAdsSpread ? DF.effAdsSpread(me) : 1;
+  const effMove = DF.effMoveSpread ? DF.effMoveSpread(me) : 1;
+  const spread = me.ads ? CFG.adsSpread * effAds : (me.crouch ? CFG.spread * 0.7 * effSpr : CFG.spread * effSpr + Math.min(0.02, Math.hypot(me.vel.x, me.vel.z) * 0.0035) * effMove);
   dir.x += rnd(-spread, spread);
   dir.y += rnd(-spread, spread) * 0.8;
   dir.z += rnd(-spread, spread);
@@ -1575,12 +1579,13 @@ DF.tryLocalFire = function () {
 
 DF.requestReload = function () {
   const me = DF.players.get(DF.myId);
-  if (!me || me.reloading || me.ammo === CFG.mag || me.reserve <= 0) return;
+  const effMag = DF.effMag ? DF.effMag(me) : CFG.mag;
+  if (!me || me.reloading || me.ammo === effMag || me.reserve <= 0) return;
   DF.Audio.reload();
   if (DF.mode === 'guest') {
     DF.net._sendRel({ t: 'in', r: 1, f: 0, s: 0, y: me.yaw, p: me.pitch });
     me.reloading = true;
-    me.reloadEnd = DF.time + CFG.reloadTime; // 预测
+    me.reloadEnd = DF.time + (DF.effReload ? DF.effReload(me) : CFG.reloadTime); // 预测
   } else {
     DF.startReload(me);
     DF.net && DF.net.hostBroadcast({ t: 'rl', id: me.id });

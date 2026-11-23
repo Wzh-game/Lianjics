@@ -157,7 +157,16 @@ Net.createSlot = async function () {
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
     if (slot.onState) slot.onState(st);
-    if (st === 'failed' || st === 'closed' || st === 'disconnected') this._hostDropSlot(slot, st);
+    if (st === 'failed' || st === 'closed') { if (slot._discTimer) { clearTimeout(slot._discTimer); slot._discTimer = null; } this._hostDropSlot(slot, st); return; }
+    // ICE 瞬断常见且可自动恢复（拥塞/帧率骤降），给 12 秒恢复窗口再按掉线处理
+    if (st === 'disconnected') {
+      if (slot._discTimer) clearTimeout(slot._discTimer);
+      slot._discTimer = setTimeout(() => {
+        if (pc.connectionState === 'disconnected') this._hostDropSlot(slot, 'disconnected');
+      }, 12000);
+      return;
+    }
+    if (st === 'connected' && slot._discTimer) { clearTimeout(slot._discTimer); slot._discTimer = null; }
   };
   return slot;
 };
@@ -219,6 +228,20 @@ Net._hostHandleMessage = function (slot, m) {
       if (m.f2) this._hostGuestFire(pl, m);
       break;
     }
+    case 'wsel': {
+      // 客人声明自己的出战枪械与配件（服务端白名单校验）
+      const GUNS_OK = { m4a1: 1, ak74: 1, mp5: 1 };   // 与大厅「已入库」一致，未解锁枪械不可携行
+      const BASE_M = { m4a1: { m: 30, r: 2.05 }, ak74: { m: 30, r: 2.20 }, mp5: { m: 30, r: 2.35 }, awm: { m: 5, r: 3.20 }, m249: { m: 100, r: 4.60 }, vss: { m: 10, r: 2.80 } };
+      const SLOT_LEN = [5, 5, 5, 5, 5];
+      const g = String(m.g || '');
+      const a = Array.isArray(m.a) ? m.a.slice(0, 5) : null;
+      if (pl && GUNS_OK[g] && a && a.length === 5 && a.every((v, i) => Number.isInteger(v + 0) && (v | 0) >= 0 && (v | 0) < SLOT_LEN[i])) {
+        pl.weapon = { gun: g, atts: a.map(v => v | 0) };
+        // 客人的 wsel 在房主 spawnPlayer 之后才到：未开火过则按新武器满弹匣，中途改装仅削减
+        if (DF.effMag) pl.ammo = (pl.shots | 0) === 0 ? DF.effMag(pl) : Math.min(pl.ammo, DF.effMag(pl));
+      }
+      break;
+    }
     case 'ping': this._hostSend(slot, { t: 'pong', ts: m.ts }, true); break;
     case 'chat': {
       const nm = pl ? pl.name : '访客', col = pl ? pl.color : '#aaa';
@@ -265,6 +288,7 @@ Net._hostAdmit = function (slot, name) {
 Net._hostDropSlot = function (slot, why) {
   if (slot.dropped) return;
   slot.dropped = true;
+  if (slot._discTimer) { clearTimeout(slot._discTimer); slot._discTimer = null; }
   this.slots = this.slots.filter(s => s !== slot);
   if (slot.player) {
     const p = slot.player;
@@ -300,7 +324,7 @@ Net._hostGuestFire = function (pl, m) {
 };
 
 Net._hostGuestReload = function (pl) {
-  if (pl.reloading || pl.ammo >= CFG.mag || pl.reserve <= 0) return;
+  if (pl.reloading || pl.ammo >= (DF.effMag ? DF.effMag(pl) : CFG.mag) || pl.reserve <= 0) return;
   DF.startReload(pl);
   this.hostBroadcast({ t: 'rl', id: pl.id });
 };
@@ -448,9 +472,19 @@ Net.connectAsGuest = async function (offerCode, myName) {
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
     if (st === 'failed') DF.M.onNetError && DF.M.onNetError('WebRTC 连接失败（NAT 穿透失败，可尝试开 VPN 或换网络）');
-    if (st === 'disconnected' || st === 'closed') {
+    if (st === 'failed' || st === 'closed') {
+      if (this._discTimer) { clearTimeout(this._discTimer); this._discTimer = null; }
       if (this.connected) { this.connected = false; DF.M.onDisconnected && DF.M.onDisconnected(); }
+      return;
     }
+    if (st === 'disconnected') {
+      if (this._discTimer) clearTimeout(this._discTimer);
+      this._discTimer = setTimeout(() => {
+        if (pc.connectionState === 'disconnected' && this.connected) { this.connected = false; DF.M.onDisconnected && DF.M.onDisconnected(); }
+      }, 12000);
+      return;
+    }
+    if (st === 'connected' && this._discTimer) { clearTimeout(this._discTimer); this._discTimer = null; }
   };
 
   await pc.setRemoteDescription({ type: 'offer', sdp: obj.sdp });
@@ -503,7 +537,7 @@ Net._guestHandle = function (m) {
       const p = DF.players.get(m.id);
       if (p) {
         p.pos.set(m.p[0], m.p[1], m.p[2]);
-        p.hp = CFG.maxHp; p.alive = true; p.vy = 0; p.ammo = CFG.mag;
+        p.hp = CFG.maxHp; p.alive = true; p.vy = 0; p.ammo = (DF.effMag ? DF.effMag(p) : CFG.mag);
         p.reloading = false;
         if (p.netTarget) p.netTarget.pos.copy(p.pos);
         if (m.id === DF.myId) DF.M.onLocalRespawn && DF.M.onLocalRespawn();

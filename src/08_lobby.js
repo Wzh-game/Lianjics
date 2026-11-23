@@ -12,11 +12,11 @@
 
   /* ---------- 地图简报 ---------- */
   const MAP_META = {
-    base:     { mode: '搜打撤 · 经典战区', time: '行动时限 15:00', scale: '约 220×220m', desc: '军事禁区：仓库与集装箱纵横，物资密集。适合新兵上手，机器人相对稀疏。' },
-    outpost:  { mode: '搜打撤 · 前线阵地', time: '行动时限 15:00', scale: '约 260×260m', desc: '边境前哨：断墙与战壕构成交叉火力网，注意壕沟之间的侧翼警戒。' },
-    oilfield: { mode: '搜打撤 · 工业区',   time: '行动时限 15:00', scale: '约 300×300m', desc: '沙漠油田：储油罐与采油机林立，高价值物资出没，注意开阔地带的交火。' },
-    urban:    { mode: '搜打撤 · 近距离作战', time: '行动时限 15:00', scale: '约 280×280m', desc: '废弃城区：破楼与街巷适合室内清房，转角交火频繁，听好脚步声。' },
-    harbor:   { mode: '搜打撤 · 港口枢纽', time: '行动时限 15:00', scale: '约 320×320m', desc: '临海港口：货柜与吊机提供大量垂直机动空间，水边是撤离热点区域。' },
+    base:     { mode: '搜打撤 · 经典战区', time: '行动时限 12:00', scale: '约 220×220m', desc: '军事禁区：仓库与集装箱纵横，物资密集。适合新兵上手，机器人相对稀疏。' },
+    outpost:  { mode: '搜打撤 · 前线阵地', time: '行动时限 12:00', scale: '约 260×260m', desc: '边境前哨：断墙与战壕构成交叉火力网，注意壕沟之间的侧翼警戒。' },
+    oilfield: { mode: '搜打撤 · 工业区',   time: '行动时限 12:00', scale: '约 300×300m', desc: '沙漠油田：储油罐与采油机林立，高价值物资出没，注意开阔地带的交火。' },
+    urban:    { mode: '搜打撤 · 近距离作战', time: '行动时限 12:00', scale: '约 280×280m', desc: '废弃城区：破楼与街巷适合室内清房，转角交火频繁，听好脚步声。' },
+    harbor:   { mode: '搜打撤 · 港口枢纽', time: '行动时限 12:00', scale: '约 320×320m', desc: '临海港口：货柜与吊机提供大量垂直机动空间，水边是撤离热点区域。' },
     frontier: { mode: '搜打撤 · 开放大地图', time: '袭击时限 20:00', scale: '3000×3000m', desc: '开放大地图「吴家村」：九个命名地标可自由选择落点，行动时限 20 分钟；天基空投第 10:00 落村中心。' }
   };
 
@@ -86,19 +86,21 @@
 
   /* ---------- 枪械库 ---------- */
   const GUNS = [
-    { name: 'M4A1 突击步枪', no: 'AR · 5.56mm', dmg: 46, rng: 62, rof: 72, owned: true,
+    { id: 'm4a1', name: 'M4A1 突击步枪', no: 'AR · 5.56mm', dmg: 46, rng: 62, rof: 72, owned: true,
       svg: '<rect x="14" y="26" width="98" height="12" rx="1.5"/><rect x="112" y="29" width="58" height="5"/><rect x="170" y="28" width="22" height="7"/><rect x="40" y="38" width="10" height="16" transform="rotate(8 45 38)"/><rect x="58" y="38" width="8" height="11"/><rect x="8" y="24" width="12" height="17"/><rect x="66" y="20" width="16" height="6"/><rect x="30" y="19" width="5" height="7"/>' },
-    { name: 'AK-74M 突击步枪', no: 'AR · 5.45mm', dmg: 52, rng: 55, rof: 66, owned: true,
+    { id: 'ak74', name: 'AK-74M 突击步枪', no: 'AR · 5.45mm', dmg: 52, rng: 55, rof: 66, owned: true,
       svg: '<path d="M14 24h96v13H34l-6 12H14l6-12z"/><rect x="110" y="27" width="56" height="6"/><rect x="166" y="26" width="24" height="8"/><path d="M52 37l-4 18h9l5-18z"/><rect x="8" y="22" width="10" height="18"/><rect x="46" y="18" width="14" height="6"/>' },
-    { name: 'MP5 冲锋枪', no: 'SMG · 9mm', dmg: 30, rng: 34, rof: 88, owned: true,
+    { id: 'mp5', name: 'MP5 冲锋枪', no: 'SMG · 9mm', dmg: 30, rng: 34, rof: 88, owned: true,
       svg: '<rect x="34" y="26" width="66" height="11" rx="2"/><rect x="100" y="29" width="46" height="5"/><rect x="146" y="28" width="14" height="7"/><rect x="52" y="37" width="9" height="17" transform="rotate(6 56 37)"/><rect x="66" y="37" width="8" height="10"/><path d="M30 26l-8 4v8l10 2z"/><rect x="62" y="20" width="12" height="6"/>' },
-    { name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '干员等级 30 解锁',
+    { id: 'awm', name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '干员等级 30 解锁',
       svg: '<rect x="8" y="25" width="118" height="11" rx="1"/><rect x="126" y="28" width="52" height="5"/><rect x="178" y="26" width="16" height="8"/><rect x="40" y="36" width="9" height="14" transform="rotate(10 44 36)"/><rect x="64" y="36" width="7" height="10"/><path d="M4 28h10v13H4z"/><rect x="34" y="18" width="26" height="6"/><circle cx="34" cy="21" r="3.4"/><circle cx="60" cy="21" r="3.4"/><path d="M68 36l6 12h6l-4-12z"/>' },
-    { name: 'M249 轻机枪', no: 'LMG · 5.56mm', dmg: 40, rng: 60, rof: 80, owned: false, req: '累计击杀 150 解锁',
+    { id: 'm249', name: 'M249 轻机枪', no: 'LMG · 5.56mm', dmg: 40, rng: 60, rof: 80, owned: false, req: '累计击杀 150 解锁',
       svg: '<rect x="16" y="25" width="104" height="13" rx="1.5"/><rect x="120" y="28" width="52" height="6"/><rect x="172" y="27" width="16" height="8"/><rect x="46" y="38" width="8" height="12"/><path d="M64 38h10l4 16H60z"/><rect x="10" y="23" width="12" height="17"/><rect x="30" y="38" width="20" height="8" rx="4"/><rect x="58" y="19" width="18" height="6"/>' },
-    { name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '完成赛季任务「无声猎手」解锁',
+    { id: 'vss', name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '完成赛季任务「无声猎手」解锁',
       svg: '<rect x="22" y="26" width="86" height="11" rx="2"/><rect x="108" y="28" width="40" height="6"/><rect x="148" y="27" width="26" height="8" rx="3"/><rect x="50" y="37" width="8" height="15" transform="rotate(8 54 37)"/><rect x="16" y="24" width="10" height="16"/><rect x="58" y="20" width="10" height="6"/><path d="M70 37l5 11h5l-3-11z"/>' }
   ];
+
+  window.DF_GUNS = GUNS;   // 供枪械工坊复用卡面数据
 
   const statRow = (label, v) => `<div class="df-stat"><b>${label}</b><div class="bar"><i style="width:${v}%"></i></div><span>${v}</span></div>`;
 
@@ -187,7 +189,7 @@
     updateBrief();
     // 各面板内容
     renderOperators();
-    renderGuns();
+    /* 枪械库改由 10_gunsmith.js 渲染 */
     renderMissions();
     renderShop();
     // data-toast 占位按钮

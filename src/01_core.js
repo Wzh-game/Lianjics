@@ -4,7 +4,16 @@
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.5.0';
+DF.VERSION = '1.6.0';
+
+// 无 user gesture 时 requestPointerLock 会同步抛错或返回 rejected Promise（客人收到 start 直接进场即触发）。
+// 统一静默吞掉，锁定交给玩家点按画布时再做。
+DF.requestPointerLockSafe = function (el) {
+  try {
+    const r = el && el.requestPointerLock && el.requestPointerLock();
+    if (r && typeof r.catch === 'function') r.catch(function () { });
+  } catch (e) { /* 等待玩家点按画布 */ }
+};
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
