@@ -155,7 +155,7 @@ DF.createPlayer = function (opt) {
   const id = opt.id || ('p' + (++__pid));
   const color = opt.color || CFG.colors[rndInt(0, CFG.colors.length - 1)];
   const p = {
-    id, name: opt.name || ('Operator-' + id), isBot: !!opt.isBot, isLocal: !!opt.isLocal,
+    id, name: opt.name || ('Operator-' + id), isBot: !!opt.isBot, isLocal: !!opt.isLocal, isAlly: !!opt.isAlly,
     color,
     pos: new T.Vector3(0, 0, 0), vel: new T.Vector3(), vy: 0,
     yaw: 0, pitch: 0, onGround: true, crouch: false, sprint: false, ads: false,
@@ -511,9 +511,19 @@ DF.updateBot = function (bot, dt) {
     DF.players.forEach(p => {
       if (!p.alive || p.id === bot.id) return;
       const d = p.pos.distanceTo(bot.pos);
+      if ((p.invisibleUntil || 0) > t && d > 6) return;   // 暗影步：不可被发现
       if (d < nd) { nd = d; nearest = p; }
     });
     const sight = DF.sightRange || 62;
+    if (nearest) {
+      const kitT = DF.kitOf ? DF.kitOf(nearest) : null;
+      let sightEff = sight;
+      if (kitT && kitT.passive.id === 'quiet') sightEff *= 0.65;     // 无名·无声猎手
+      else if (kitT && kitT.passive.id === 'silent') sightEff *= 0.72;  // 骇爪·隐匿消声
+      if ((nearest.ghostUntil || 0) > t) sightEff *= 0.5;              // 骇爪·静默步
+      if (DF.smokeBlocks && nd > 7 && DF.smokeBlocks(bot.pos.x, bot.pos.z, nearest.pos.x, nearest.pos.z)) nearest = null;   // 烟雾遮蔽
+      if (nearest && nd >= sightEff) nearest = null;
+    }
     const prevState = bot.botState;
     if (nearest && nd < sight) {
       bot.botTargetPlayer = nearest.id;
@@ -626,6 +636,7 @@ DF.updateBot = function (bot, dt) {
 
 DF.botFire = function (bot, target) {
   const t = DF.time;
+  if ((bot.stunUntil || 0) > t) return;
   if (t - bot.lastFire < CFG.fireRate) return;
   bot.lastFire = t;
   if (bot.ammo <= 0) { DF.startReload(bot); return; }
@@ -635,7 +646,8 @@ DF.botFire = function (bot, target) {
   const dir = new T.Vector3(0, 0, -1).applyEuler(new T.Euler(bot.pitch, bot.yaw, 0, 'YXZ'));
   // 命中率随距离衰减
   const d = origin.distanceTo(target.pos);
-  const err = 0.004 + d * 0.0016 + (bot.input.sprint ? 0.02 : 0);
+  let err = 0.004 + d * 0.0016 + (bot.input.sprint ? 0.02 : 0);
+  if ((bot.accDebuffUntil || 0) > t) err *= 3.1;   // 干扰/电刺：命中率大跌
   dir.x += rnd(-err, err); dir.y += rnd(-err, err) * 0.7; dir.z += rnd(-err, err);
   dir.normalize();
   DF.hostShoot(bot, origin, dir, true);
@@ -657,7 +669,12 @@ DF.hostShoot = function (shooter, origin, dir, isBot) {
   DF.fx.blood(res.point);
   DF.net && DF.net.hostBroadcastFx({ t: 'bld', p: [res.point.x, res.point.y, res.point.z] });
   const dmgMult = (DF.effDmg ? DF.effDmg(shooter) : 1);
-  const dmg = Math.round((res.part === 'head' ? CFG.dmgHead : (res.part === 'leg' ? CFG.dmgLeg : CFG.dmgBody)) * dmgMult);
+  let dmg = Math.round((res.part === 'head' ? CFG.dmgHead : (res.part === 'leg' ? CFG.dmgLeg : CFG.dmgBody)) * dmgMult);
+  if ((shooter.powerShotUntil || 0) > DF.time) {   // 露娜「猎杀箭」：下一枪 +60% 并标记
+    dmg = Math.round(dmg * 1.6);
+    shooter.powerShotUntil = 0;
+    if (victim && victim.alive) victim.markedUntil = Math.max(victim.markedUntil || 0, DF.time + 5);
+  }
   DF.hostDamage(victim.id, dmg, shooter.id, res.part);
 };
 
@@ -666,6 +683,42 @@ DF.hostDamage = function (victimId, dmg, attackerId, part) {
   if (!v || !v.alive) return;
   const att = DF.players.get(attackerId);
   if (att) att.hits += 1;
+  const _t = DF.time;
+  // 疾风「紧急回避装置」：受到致命伤强制拉回锚点（1 次）
+  if (v.anchorActive && !v.anchorUsed && v.anchorPos && v.hp - dmg <= 0) {
+    v.pos.copy(v.anchorPos);
+    if (v.vel) v.vel.set(0, 0, 0);
+    v.vy = 0; v.hp = 1; v.anchorUsed = true; v.anchorActive = false;
+    DF.toast && DF.toast('⚓ 紧急回避装置触发，已拉回锚点');
+    DF.net && DF.net.hostBroadcast({ t: 'rs', id: v.id, p: [+v.pos.x.toFixed(2), +v.pos.y.toFixed(2), +v.pos.z.toFixed(2)] });
+    return;
+  }
+  // 能量盾（便携盾牌/盾式破障/防爆套装）
+  if ((v.shieldUntil || 0) > _t && v.shieldAmount > 0) {
+    let inArc = true;
+    if ((v.shieldArc || 120) < 360) {
+      const attPos = att ? att.pos : null;
+      if (attPos) {
+        const dx = attPos.pos.x - v.pos.x, dz = attPos.pos.z - v.pos.z;
+        let ang = Math.atan2(-dx, -dz) - (v.shieldYaw != null ? v.shieldYaw : (v.yaw || 0));
+        while (ang > Math.PI) ang -= 2 * Math.PI;
+        while (ang < -Math.PI) ang += 2 * Math.PI;
+        inArc = Math.abs(ang) <= ((v.shieldArc || 120) * Math.PI / 180) / 2;
+      }
+    }
+    if (inArc) {
+      const absorbed = Math.min(v.shieldAmount, dmg);
+      v.shieldAmount -= absorbed; dmg -= absorbed;
+      if (v.shieldAmount <= 0) v.shieldUntil = 0;
+      if (dmg <= 0) {
+        DF.net && DF.net.hostBroadcast({ t: 'hp', id: v.id, hp: Math.max(0, Math.round(v.hp)), by: attackerId, part });
+        return;
+      }
+    }
+  }
+  if ((v.ironwallUntil || 0) > _t) dmg = Math.max(1, Math.round(dmg * 0.45));   // 莽兽·不动如山
+  if ((v.drUntil || 0) > _t) dmg = Math.max(1, Math.round(dmg * 0.7));         // 蝶·生命体征监测
+  if ((v.vulnUntil || 0) > _t) dmg = Math.round(dmg * 1.25);                   // 蛊·流荧集群
   // 护甲在权威伤害入口统一结算，腿部护甲效果略低。
   const armor = Math.max(0, Math.min(0.55, v.armor || 0));
   dmg = Math.max(1, Math.round(dmg * (1 - armor * (part === 'leg' ? 0.9 : 1))));
@@ -679,12 +732,41 @@ DF.hostDamage = function (victimId, dmg, attackerId, part) {
     v.respawnAt = DF.time + CFG.respawnTime;
     if (att && att.id !== v.id) {
       att.kills++;
+      if (DF.kitOf) {
+        const akit = DF.kitOf(att);
+        if (akit && (att.exoUntil || 0) > _t) att.hp = Math.min((DF.maxHpOf ? DF.maxHpOf(att) : CFG.maxHp), att.hp + 25);
+        if (akit && akit.passive.id === 'tenacity') att.tenacityUntil = _t + 4;
+        if (att._killResetCd != null && att._abCd) { att._abCd[att._killResetCd] = 0; att._killResetCd = null; }
+      }
       if (att.kills >= CFG.killTarget) DF.M.gameEnd && DF.M.gameEnd(att.id);
     }
     DF.onKill(att, v, part);
     if (v.isLocal) DF.M.onLocalDeath && DF.M.onLocalDeath(attackerId);
   } else {
     DF.M.onDamage && DF.M.onDamage(v, att, dmg, part);
+  }
+  // 干员被动·命中附带：旅人/露娜 标记目标；回响 受击方位/标记；疾风 受击加速
+  if (att && DF.kitOf) {
+    const akit = DF.kitOf(att);
+    if (akit) {
+      const pid = akit.passive.id;
+      if (pid === 'track' || pid === 'tracker') v.markedUntil = Math.max(v.markedUntil || 0, _t + 4);
+      else if (pid === 'echo_sense') v.markedUntil = Math.max(v.markedUntil || 0, _t + 3);
+    }
+  }
+  if (DF.kitOf) {
+    const vkit = DF.kitOf(v);
+    if (vkit) {
+      const pid = vkit.passive.id;
+      if (pid === 'adrenal') { v.hasteUntil = Math.max(v.hasteUntil || 0, _t + 1.5); v.hasteMul = 1.12; }
+      else if (pid === 'echo_sense' && att) { v.trackTarget = att.id; v.trackDirUntil = Math.max(v.trackDirUntil || 0, _t + 1.5); }
+    }
+    // 蝶：AI 队友跌破 30% → 30% 伤害减免 3 秒
+    if (v.isAlly) {
+      const lk = DF.kitOf(DF.players.get(DF.myId));
+      const cap = DF.maxHpOf ? DF.maxHpOf(v) : 120;
+      if (lk && lk.passive.id === 'vitals' && v.alive && v.hp < 0.3 * cap) v.drUntil = Math.max(v.drUntil || 0, _t + 3);
+    }
   }
   // 广播
   DF.net && DF.net.hostBroadcast({ t: 'hp', id: v.id, hp: v.hp, by: attackerId, part });
@@ -708,11 +790,22 @@ DF.escapeHtml = escapeHtml;
    ============================================================ */
 DF.applyMovement = function (p, input, dt) {
   if (!p.alive) { p.vel.set(0, 0, 0); return; }
+  const _t = DF.time;
+  const kit = DF.kitOf ? DF.kitOf(p) : null;
+  const veteran = kit && kit.passive.id === 'veteran';   // 乌鲁鲁：免疫减速
+  if ((p.stunUntil || 0) > _t) { input = { f: 0, s: 0, jump: false, crouch: input.crouch, ads: false, sprint: false }; }
   const sprinting = input.sprint && input.f > 0.5 && !input.ads;
   p.sprint = sprinting;
   p.crouch = !!input.crouch;
   p.ads = !!input.ads;
   let speed = p.crouch ? CFG.crouchSpeed : (p.ads ? CFG.adsSpeed : (sprinting ? CFG.sprint : CFG.walk));
+  if (kit && kit.passive.id === 'tenacity') {              // 野火：愈战愈强
+    const cap = DF.maxHpOf ? DF.maxHpOf(p) : CFG.maxHp;
+    if (p.hp < 0.35 * cap || (p.tenacityUntil || 0) > _t) speed *= 1.2;
+  }
+  if (!veteran && (p.slowUntil || 0) > _t) speed *= (p.slowMul || 1);
+  if ((p.hasteUntil || 0) > _t) speed *= (p.hasteMul || 1);
+  if ((p.cumbersomeUntil || 0) > _t) speed *= 0.85;   // 防爆套装：厚重-15%
   // 方向
   const s = Math.sin(p.yaw), c = Math.cos(p.yaw);
   let mx = (-s * input.f) + (c * input.s);
@@ -757,20 +850,32 @@ DF.applyMovement = function (p, input, dt) {
 };
 
 DF.regenTick = function (dt) {
+  const _t = DF.time;
   DF.players.forEach(p => {
-    if (!p.alive || p.hp >= CFG.maxHp) return;
-    if (DF.time - (p.lastDamageTime || 0) < 7.5) return;
-    p.hp = Math.min(CFG.maxHp, p.hp + 9 * dt);
+    const cap = DF.maxHpOf ? DF.maxHpOf(p) : CFG.maxHp;
+    if (!p.alive || p.hp >= cap) return;
+    let delay = 7.5;
+    const kit = DF.kitOf ? DF.kitOf(p) : null;
+    if (kit && kit.passive.id === 'fielddress') delay = 5;   // 蛊：高效治疗
+    if (_t - (p.lastDamageTime || 0) < delay) return;
+    p.hp = Math.min(cap, p.hp + 9 * dt);
   });
 };
 
 DF.startReload = function (p) {
   const effMag = (DF.effMag ? DF.effMag(p) : CFG.mag);
-  const effReload = (DF.effReload ? DF.effReload(p) : CFG.reloadTime);
+  const effReload = (DF.effReload ? DF.effReload(p) : CFG.reloadTime) * (DF.reloadTimeMul ? DF.reloadTimeMul(p) : 1);
   if (p.reloading || p.ammo >= effMag || p.reserve <= 0) return;
   p.reloading = true;
   p.reloadEnd = DF.time + effReload;
   DF.net && DF.net.hostBroadcast({ t: 'rl', id: p.id });
+};
+DF.reloadTimeMul = function (p) {
+  const t = DF.time; let mul = 1;
+  if ((p.reloadBoostUntil || 0) > t) mul *= (p.reloadMul || 1);              // 肾上腺素
+  const kit = DF.kitOf ? DF.kitOf(p) : null;
+  if (kit && kit.passive.id === 'tenacity' && (p.tenacityUntil || 0) > t) mul *= 0.8;   // 野火
+  return mul;
 };
 DF.finishReload = function (p) {
   if (!p.reloading) return;

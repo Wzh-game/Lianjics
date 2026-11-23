@@ -1,6 +1,6 @@
 /* ============================================================
-   枪械工坊（Gunsmith）—— 六把枪自由改装 + 实战生效
-   - 六把枪均可更换五个配件位（瞄具/枪口/握把/弹匣/枪托）
+   枪械工坊（Gunsmith）—— 十二把枪自由改装 + 实战生效
+   - 十二把枪均可更换五个配件位（瞄具/枪口/握把/弹匣/枪托）
    - 三把已入库（M4A1/AK-74M/MP5）可「出战装备」；三把未解锁枪可预览改装、不可出战
    - 改装影响实战：弹匣容量 / 换弹时间 / 伤害 / 据枪散布 / 移动散布 / 后坐
    - 单人与房主本地生效；联机客人经 'wsel' 消息向房主声明（房主权威伤害/弹药）
@@ -13,20 +13,33 @@
   const GUNS = window.DF_GUNS || [];
 
   /* ---------- 武器基础参数（与枪械库展示条目一一对应） ---------- */
+  /* rate = 射击间隔倍率（1.0 = 默认 M4A1 节奏，越大越慢） */
   const BASE = {
-    m4a1: { short: 'M4A1', dmg: 1.00, spread: 1.00, recoil: 1.00, mag: 30,  reload: 2.05 },
-    ak74: { short: 'AK-74M', dmg: 1.13, spread: 1.08, recoil: 1.15, mag: 30, reload: 2.20 },
-    mp5:  { short: 'MP5',  dmg: 0.67, spread: 0.90, recoil: 0.80, mag: 30,  reload: 2.35 },
-    awm:  { short: 'AWM',  dmg: 2.45, spread: 0.65, recoil: 1.60, mag: 5,   reload: 3.20 },
-    m249: { short: 'M249', dmg: 0.95, spread: 1.25, recoil: 1.20, mag: 100, reload: 4.60 },
-    vss:  { short: 'VSS',  dmg: 1.55, spread: 0.75, recoil: 0.90, mag: 10,  reload: 2.80 }
+    m4a1: { short: 'M4A1', dmg: 1.00, spread: 1.00, recoil: 1.00, mag: 30,  reload: 2.05, rate: 1.00 },
+    ak74: { short: 'AK-74M', dmg: 1.13, spread: 1.08, recoil: 1.15, mag: 30, reload: 2.20, rate: 1.08 },
+    mp5:  { short: 'MP5',  dmg: 0.67, spread: 0.90, recoil: 0.80, mag: 30,  reload: 2.35, rate: 0.88 },
+    awm:  { short: 'AWM',  dmg: 2.45, spread: 0.65, recoil: 1.60, mag: 5,   reload: 3.20, rate: 6.00 },
+    m249: { short: 'M249', dmg: 0.95, spread: 1.25, recoil: 1.20, mag: 100, reload: 4.60, rate: 0.98 },
+    vss:  { short: 'VSS',  dmg: 1.55, spread: 0.75, recoil: 0.90, mag: 10,  reload: 2.80, rate: 1.65 },
+    m7:   { short: 'M7',   dmg: 1.18, spread: 1.02, recoil: 1.28, mag: 20,  reload: 2.60, rate: 1.15 },
+    smg45:{ short: 'SMG-45', dmg: 0.72, spread: 0.86, recoil: 0.88, mag: 25, reload: 2.00, rate: 0.85 },
+    sks:  { short: 'SKS',  dmg: 1.38, spread: 0.78, recoil: 1.02, mag: 10,  reload: 2.50, rate: 2.40 },
+    sr25: { short: 'SR-25', dmg: 1.70, spread: 0.56, recoil: 1.18, mag: 10, reload: 2.70, rate: 3.40 },
+    pkm:  { short: 'PKM',  dmg: 1.05, spread: 1.32, recoil: 1.35, mag: 80,  reload: 5.20, rate: 0.95 },
+    m82a1:{ short: 'M82A1', dmg: 2.90, spread: 0.62, recoil: 1.85, mag: 10, reload: 4.50, rate: 7.20 }
   };
   const BASE_OWNED = { m4a1: true, ak74: true, mp5: true };
   /* 未入库枪的解锁条件：读取真实档案（DF.Profile），与大厅展示一致 */
   const UNLOCK = {
     awm:  { ok: d => (d.kills | 0) >= 80,            label: '累计击杀 80 解锁' },
     m249: { ok: d => (d.kills | 0) >= 150,           label: '累计击杀 150 解锁' },
-    vss:  { ok: d => (d.frontierExtracted | 0) >= 3, label: '累计从吴家村成功撤离 3 次解锁' }
+    vss:  { ok: d => (d.frontierExtracted | 0) >= 3, label: '累计从吴家村成功撤离 3 次解锁' },
+    m7:   { ok: d => (d.kills | 0) >= 120,           label: '累计击杀 120 解锁' },
+    smg45:{ ok: d => (d.kills | 0) >= 60,            label: '累计击杀 60 解锁' },
+    sks:  { ok: d => (d.kills | 0) >= 40,            label: '累计击杀 40 解锁' },
+    sr25: { ok: d => (d.kills | 0) >= 100,           label: '累计击杀 100 解锁' },
+    pkm:  { ok: d => (d.kills | 0) >= 200,           label: '累计击杀 200 解锁' },
+    m82a1:{ ok: d => (d.frontierExtracted | 0) >= 5, label: '累计从吴家村成功撤离 5 次解锁' }
   };
   /* 枪械工坊在解析期即做出战枪校验，早于 DF.init 的 Profile.load()；
      这里主动 load 一次（幂等），保证解锁判断基于真实档案 */
@@ -135,6 +148,7 @@
   DF.effAdsSpread = p => clamp(1 + sumMod(p, 'spread') * 0.6 + sumMod(p, 'adsSpread'), 0.35, 2.5);
   DF.effMoveSpread = p => clamp(1 + sumMod(p, 'moveSpread'), 0.3, 2);
   DF.effRecoil = p => clamp(defOf(p).recoil * (1 + sumMod(p, 'recoil')), 0.35, 2.6);
+  DF.gunFireRate = p => Math.max(0.05, CFG.fireRate * (defOf(p).rate || 1));
   DF.effStats = p => ({
     mag: DF.effMag(p), reload: DF.effReload(p), dmg: DF.effDmg(p),
     spread: DF.effSpread(p), adsSpread: DF.effAdsSpread(p),
@@ -143,7 +157,7 @@
 
 
   /* ============================================================
-     第一人称枪械模型 · 六枪可切换 · 五槽配件可视化
+     第一人称枪械模型 · 十二枪可切换 · 五槽配件可视化
      与 createViewModel 共用一套局部坐标（-z 向前）；
      DF.syncViewModel() 按「当前出战枪 + 配件」重建枪组
      ============================================================ */
@@ -186,6 +200,37 @@
       mag: [0.095, 0.13, 0.17], magY: -0.165, magRot: 0, magMat: 'ammoBox', magBox: true,
       stock: [0.055, 0.088, 0.26], stockMat: 'body2', sight: 'iron', fgZ: -0.37,
       defaultMuzzle: 'flashHider', bipod: true },
+    m7: { receiver: [0.077, 0.103, 0.43], receiverZ: -0.12, rail: 0.46, railZ: -0.17,
+      hand: [0.071, 0.082, 0.31], handZ: -0.43, handMat: 'tan', vents: 4,
+      barrelR: 0.015, barrelLen: 0.36, barrelZ: -0.74, tip: -0.92,
+      mag: [0.05, 0.145, 0.078], magY: -0.13, magRot: -0.16, magMat: 'body2',
+      stock: [0.05, 0.087, 0.27], stockMat: 'body2', sight: 'reflex', fgZ: -0.37 },
+    smg45: { receiver: [0.07, 0.094, 0.32], receiverZ: -0.10, rail: 0.22, railZ: -0.12,
+      hand: [0.062, 0.072, 0.20], handZ: -0.35, handMat: 'body2', vents: 2,
+      barrelR: 0.013, barrelLen: 0.15, barrelZ: -0.50, tip: -0.58,
+      mag: [0.052, 0.19, 0.085], magY: -0.15, magRot: -0.22, magMat: 'body2',
+      stock: [0.042, 0.068, 0.15], stockMat: 'body2', sight: 'iron', fgZ: -0.31 },
+    sks: { receiver: [0.068, 0.096, 0.40], receiverZ: -0.12, rail: 0.10, railZ: -0.14,
+      hand: [0.062, 0.074, 0.27], handZ: -0.38, handMat: 'wood', vents: 2,
+      barrelR: 0.013, barrelLen: 0.33, barrelZ: -0.70, tip: -0.87,
+      mag: [0.036, 0.13, 0.062], magY: -0.125, magRot: -0.38, magMat: 'bakelite',
+      stock: [0.05, 0.082, 0.21], stockMat: 'wood', sight: 'iron', fgZ: -0.32 },
+    sr25: { receiver: [0.077, 0.106, 0.45], receiverZ: -0.13, rail: 0.38, railZ: -0.15,
+      hand: [0.067, 0.078, 0.36], handZ: -0.45, handMat: 'body2', vents: 0,
+      barrelR: 0.016, barrelLen: 0.47, barrelZ: -0.84, tip: -1.08,
+      mag: [0.046, 0.135, 0.07], magY: -0.12, magRot: -0.07, magMat: 'body2',
+      stock: [0.051, 0.09, 0.28], stockMat: 'body2', sight: 'scope4x', fgZ: -0.39 },
+    pkm: { receiver: [0.088, 0.11, 0.44], receiverZ: -0.13, rail: 0.22, railZ: -0.15,
+      hand: [0.08, 0.084, 0.35], handZ: -0.44, handMat: 'body2', vents: 5,
+      barrelR: 0.019, barrelLen: 0.44, barrelZ: -0.82, tip: -1.04,
+      mag: [0.075, 0.11, 0.15], magY: -0.15, magRot: 0, magMat: 'ammoBox', magBox: true,
+      stock: [0.052, 0.085, 0.25], stockMat: 'body2', sight: 'iron', fgZ: -0.36, bipod: true },
+    m82a1: { receiver: [0.082, 0.115, 0.50], receiverZ: -0.14, rail: 0.34, railZ: -0.16,
+      hand: [0.07, 0.082, 0.40], handZ: -0.47, handMat: 'body2', vents: 0,
+      barrelR: 0.019, barrelLen: 0.62, barrelZ: -0.97, tip: -1.28,
+      mag: [0.05, 0.12, 0.075], magY: -0.125, magRot: -0.06, magMat: 'body2',
+      stock: [0.055, 0.1, 0.33], stockMat: 'body', sight: 'scope4x', fgZ: -0.42,
+      defaultMuzzle: 'brakeBig' },
     vss: { receiver: [0.07, 0.095, 0.36], receiverZ: -0.11, rail: 0.26, railZ: -0.13,
       hand: [0.066, 0.075, 0.26], handZ: -0.39, handMat: 'tan', vents: 0,
       barrelR: 0.013, barrelLen: 0.16, barrelZ: -0.52, tip: -0.60,
@@ -355,8 +400,14 @@
     if (isGunUnlocked(id)) return '';
     const d = profileData();
     if (id === 'vss') return `吴家村撤离进度 ${Math.min(d.frontierExtracted | 0, 3)}/3`;
+    if (id === 'm82a1') return `吴家村撤离进度 ${Math.min(d.frontierExtracted | 0, 5)}/5`;
     if (id === 'awm') return `击杀进度 ${Math.min(d.kills | 0, 80)}/80`;
     if (id === 'm249') return `击杀进度 ${Math.min(d.kills | 0, 150)}/150`;
+    if (id === 'm7') return `击杀进度 ${Math.min(d.kills | 0, 120)}/120`;
+    if (id === 'smg45') return `击杀进度 ${Math.min(d.kills | 0, 60)}/60`;
+    if (id === 'sks') return `击杀进度 ${Math.min(d.kills | 0, 40)}/40`;
+    if (id === 'sr25') return `击杀进度 ${Math.min(d.kills | 0, 100)}/100`;
+    if (id === 'pkm') return `击杀进度 ${Math.min(d.kills | 0, 200)}/200`;
     return '';
   };
 

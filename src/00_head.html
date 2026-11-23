@@ -129,6 +129,52 @@ h2.ptitle span{color:var(--accent)}
 #endscreen table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
 #endscreen th,#endscreen td{padding:6px 8px;border-bottom:1px solid #2c3623;text-align:left}
 #endscreen th{color:var(--dim)}
+/* ============ 干员技能 HUD（v1.8） ============ */
+#abilbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:10px;align-items:flex-end;z-index:6;pointer-events:none}
+.abil{position:relative;width:66px;height:66px;background:rgba(10,14,8,.8);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:border-color .2s}
+.abil .key{position:absolute;top:2px;left:5px;font-size:10px;color:var(--dim);letter-spacing:1px}
+.abil .icon{font-size:25px;line-height:1;color:var(--txt)}
+.abil .nm{font-size:9px;color:var(--dim);max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
+.abil.ult{border-color:var(--accent);box-shadow:inset 0 0 14px rgba(255,140,26,.28)}
+.abil.ult .icon{color:var(--accent2)}
+.abil.oncd .icon,.abil.oncd .nm{color:#57624d}
+.abil .cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:25px;font-weight:900;color:#fff;text-shadow:0 0 8px #000}
+.abil.pulse{animation:abPulse .38s ease-out}
+@keyframes abPulse{0%{transform:scale(1)}40%{transform:scale(1.2);border-color:var(--accent)}100%{transform:scale(1)}}
+.passive{display:flex;flex-direction:column;align-items:center;justify-content:center;width:58px;height:66px;
+  background:rgba(10,14,8,.55);border:1px dashed #3d4a30}
+.passive .tag{font-size:9px;letter-spacing:2px;color:var(--dim)}
+.passive .pnm{font-size:9px;color:#c8d3a8;margin-top:3px;max-width:56px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#squadwrap{position:absolute;left:22px;bottom:188px;width:216px;background:rgba(10,14,8,.68);
+  border:1px solid var(--line);padding:7px 10px;font-size:12px;z-index:6}
+.sqtitle{letter-spacing:2px;color:var(--accent2);font-size:11px;display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;border-bottom:1px solid #2c3623;padding-bottom:4px}
+#squad-heal-hint{color:var(--dim);letter-spacing:0;font-size:11px}
+#squad-heal-hint.ready{color:#8fd06a}
+.allyrow{display:flex;align-items:center;gap:6px;margin:5px 0}
+.allyrow .an{width:48px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#9fd0ff;font-size:11px}
+.allyrow.dead .an{color:#ff6b5e}
+.abar{flex:1;height:8px;background:#141a10;border:1px solid var(--line)}
+.abar i{display:block;height:100%;background:linear-gradient(90deg,#4d9fd8,#8fd0ff);width:100%;transition:width .25s}
+.allyrow.dead .abar i{background:#402020}
+#marklayer{position:absolute;inset:0;overflow:hidden;z-index:4}
+.mark{position:absolute;transform:translate(-50%,-100%);color:#ffb347;font-size:11px;
+  text-shadow:0 0 5px #000;text-align:center;line-height:1.05}
+.mark i{font-style:normal;font-size:16px;display:block}
+.mark span{letter-spacing:1px;font-size:10px}
+#flashfx{position:absolute;inset:0;background:#fdfdf4;opacity:0;pointer-events:none;z-index:9;transition:opacity .1s linear}
+#trike{position:absolute;inset:0;z-index:4}
+.triArrow{position:absolute;color:#ffd27a;font-size:19px;text-shadow:0 0 8px rgba(255,190,80,.85);line-height:1}
+@media (max-width:760px){
+  #abilbar{bottom:8px;gap:6px}
+  .abil{width:46px;height:46px}
+  .abil .icon{font-size:18px}
+  .abil .nm{display:none}
+  .passive{display:none}
+  #squadwrap{bottom:150px;width:150px;font-size:11px}
+}
 /* ============ 搜打撤 UI ============ */
 #raidbar{position:absolute;top:44px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;
   font-size:12px;color:var(--dim);letter-spacing:1px;z-index:2;pointer-events:none;white-space:nowrap}
@@ -736,7 +782,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.7.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.8.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -747,7 +793,7 @@ body.touchmode #joystickHint{display:none}
 
     <!-- ───────── 枪械库 ───────── -->
     <section class="df-panel" data-panel="armory">
-      <div class="df-title">枪械库<small>ARMORY · 自由改装 · 六把枪均可更换配件</small></div>
+      <div class="df-title">枪械库<small>ARMORY · 自由改装 · 十二把枪均可更换配件</small></div>
       <div class="df-armory-wrap">
         <div class="df-gunlist" id="gun-grid"></div>
         <div class="df-gunsmith" id="gunsmith"></div>

@@ -858,7 +858,7 @@ DF.spawnPlayer = function (p) {
   const sp = DF.pickSpawn();
   p.pos.copy(sp);
   p.vel.set(0, 0, 0); p.vy = 0; p.onGround = true;
-  p.hp = CFG.maxHp; p.alive = true; p.weapon = (p.id === DF.myId && DF.equippedWeapon) ? DF.equippedWeapon() : p.weapon;
+  p.hp = DF.maxHpOf ? DF.maxHpOf(p) : CFG.maxHp; p.alive = true; p.weapon = (p.id === DF.myId && DF.equippedWeapon) ? DF.equippedWeapon() : p.weapon;
   p.ammo = DF.effMag ? DF.effMag(p) : CFG.mag; p.reserve = 90;
   p.reloading = false; p.crouch = false; p.kills = p.kills || 0;
   p.yaw = Math.atan2(-(0 - sp.x), -(0 - sp.z));  // 朝地图中心
@@ -981,6 +981,7 @@ DF.startSolo = function () {
     DF.spawnPlayer(b);
     b.botNextThink = 0;
   }
+  if (DF.spawnAllies) DF.spawnAllies(2);   // AI 队友：断牙 & 洛溪
   DF.beginPlay();
 };
 
@@ -1021,6 +1022,7 @@ DF.hostStartMatch = function (alreadyConnected) {
     DF.attachMesh(b, DF.scene);
     DF.spawnPlayer(b);
   }
+  if (DF.spawnAllies) DF.spawnAllies(2);   // AI 队友随房主开局
   DF.matchTime = 0;
   DF.net.lastTick = now();
   DF.net.startHost();
@@ -1534,10 +1536,12 @@ DF.tryLocalFire = function () {
   if (!me || !me.alive || DF.matchOver) return;
   const t = DF.time;
   if (me.reloading) return;
-  if (t - (me.lastFire || 0) < CFG.fireRate) return;
+  const baseRate = DF.gunFireRate ? DF.gunFireRate(me) : CFG.fireRate;
+  const fireRate = baseRate * (((me.fireRateUntil || 0) > t) ? (me.fireRateMul || 1) : 1);   // 外骨骼：射速+32%
+  if (t - (me.lastFire || 0) < fireRate) return;
   if (me.ammo <= 0) {
     DF.Audio.empty();
-    me.lastFire = t - CFG.fireRate + 0.25;
+    me.lastFire = t - fireRate + 0.25;
     if (me.reserve > 0) DF.requestReload();
     return;
   }
@@ -1548,7 +1552,7 @@ DF.tryLocalFire = function () {
   DF.fx.flash();
   DF.vmRecoil = 1;
   // 后坐力（按枪械改装倍率）
-  const kick = (me.ads ? 0.006 : 0.012) * (DF.effRecoil ? DF.effRecoil(me) : 1);
+  const kick = (me.ads ? 0.006 : 0.012) * (DF.effRecoil ? DF.effRecoil(me) : 1) * (((me.recoilBoostUntil || 0) > t) ? (me.recoilMul || 1) : 1);
   DF.camKick.pitch += kick * rnd(0.7, 1.3);
   DF.camKick.yaw += kick * rnd(-0.6, 0.6);
 
@@ -1560,7 +1564,8 @@ DF.tryLocalFire = function () {
   const effSpr = DF.effSpread ? DF.effSpread(me) : 1;
   const effAds = DF.effAdsSpread ? DF.effAdsSpread(me) : 1;
   const effMove = DF.effMoveSpread ? DF.effMoveSpread(me) : 1;
-  const spread = me.ads ? CFG.adsSpread * effAds : (me.crouch ? CFG.spread * 0.7 * effSpr : CFG.spread * effSpr + Math.min(0.02, Math.hypot(me.vel.x, me.vel.z) * 0.0035) * effMove);
+  const trapMul = (DF.trapCover && DF.trapCover(me)) ? 0.65 : 1;   // 比特：陷阱掩护据枪散布-35%
+  const spread = (me.ads ? CFG.adsSpread * effAds : (me.crouch ? CFG.spread * 0.7 * effSpr : CFG.spread * effSpr + Math.min(0.02, Math.hypot(me.vel.x, me.vel.z) * 0.0035) * effMove)) * trapMul;
   dir.x += rnd(-spread, spread);
   dir.y += rnd(-spread, spread) * 0.8;
   dir.z += rnd(-spread, spread);
@@ -1593,7 +1598,7 @@ DF.requestReload = function () {
   if (DF.mode === 'guest') {
     DF.net._sendRel({ t: 'in', r: 1, f: 0, s: 0, y: me.yaw, p: me.pitch });
     me.reloading = true;
-    me.reloadEnd = DF.time + (DF.effReload ? DF.effReload(me) : CFG.reloadTime); // 预测
+    me.reloadEnd = DF.time + (DF.effReload ? DF.effReload(me) : CFG.reloadTime) * (DF.reloadTimeMul ? DF.reloadTimeMul(me) : 1); // 预测
   } else {
     DF.startReload(me);
     DF.net && DF.net.hostBroadcast({ t: 'rl', id: me.id });

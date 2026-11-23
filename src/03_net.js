@@ -185,6 +185,15 @@ Net.acceptAnswer = async function (slot, answerCode) {
   if (slot.onState) slot.onState('accepted');
 };
 
+Net.sendHeal = function () {
+  this._sendRel({ t: 'heal' });
+};
+Net.sendAbility = function (slot, dir) {
+  // 客人 → 房主：技能使用请求（冷却由双方各自维护，房主权威判定）
+  const opId = (typeof DF.selectedOperator === 'function') ? DF.selectedOperator() : null;
+  this._sendRel({ t: 'ab', slot, op: opId, d: dir ? [+dir.x.toFixed(3), +dir.y.toFixed(3), +dir.z.toFixed(3)] : null });
+};
+
 Net._hostSend = function (slot, obj, reliable) {
   return this._sendOn(slot.chans, obj, reliable !== false);
 };
@@ -196,6 +205,7 @@ Net._hostHandleMessage = function (slot, m) {
       const first = !slot.connected;
       slot.connected = true;
       if (!slot.player) this._hostAdmit(slot, m.name);
+      if (slot.player && typeof m.op === 'string' && DF.operatorKits && DF.operatorKits[m.op]) slot.player.opId = m.op;
       if (first && slot.onState) slot.onState('connected');
       break;
     }
@@ -228,13 +238,31 @@ Net._hostHandleMessage = function (slot, m) {
       if (m.f2) this._hostGuestFire(pl, m);
       break;
     }
+    case 'heal': {
+      // 客人呼叫 AI 队友治疗：房主侧结算（callSquadHeal 以客人为调用者）
+      if (!pl || !pl.alive) break;
+      if (DF.callSquadHeal) DF.callSquadHeal(pl);
+      break;
+    }
+    case 'ab': {
+      // 客人技能请求：由房主权威执行（与本地 useAbility 相同路径）
+      if (!pl || !pl.alive) break;
+      const slot = m.slot | 0;
+      if (slot < 0 || slot > 2) break;
+      const op = (typeof m.op === 'string' && DF.operatorKits && DF.operatorKits[m.op]) ? m.op : pl.opId;
+      if (op) pl.opId = op;   // 以客人自选干员为准（房主白名单校验）
+      if (m.d && Array.isArray(m.d) && m.d.length === 3) { pl.aimYaw = Math.atan2(-m.d[0], -m.d[2]); }
+      if (DF.execAbilityFor) DF.execAbilityFor(pl, slot, true);
+      break;
+    }
     case 'wsel': {
       // 客人声明自己的出战枪械与配件（服务端白名单校验）
-      const GUNS_OK = { m4a1: 1, ak74: 1, mp5: 1 };   // 与大厅「已入库」一致，未解锁枪械不可携行
-      const BASE_M = { m4a1: { m: 30, r: 2.05 }, ak74: { m: 30, r: 2.20 }, mp5: { m: 30, r: 2.35 }, awm: { m: 5, r: 3.20 }, m249: { m: 100, r: 4.60 }, vss: { m: 10, r: 2.80 } };
+      const GUNS_OK = { m4a1: 1, ak74: 1, mp5: 1, awm: 1, m249: 1, vss: 1, m7: 1, smg45: 1, sks: 1, sr25: 1, pkm: 1, m82a1: 1 };   // 大厅枪械白名单（未解锁枪仍不可携行）
+      const BASE_M = { m4a1: { m: 30, r: 2.05 }, ak74: { m: 30, r: 2.20 }, mp5: { m: 30, r: 2.35 }, awm: { m: 5, r: 3.20 }, m249: { m: 100, r: 4.60 }, vss: { m: 10, r: 2.80 }, m7: { m: 20, r: 2.60 }, smg45: { m: 25, r: 2.00 }, sks: { m: 10, r: 2.50 }, sr25: { m: 10, r: 2.70 }, pkm: { m: 80, r: 5.20 }, m82a1: { m: 10, r: 4.50 } };
       const SLOT_LEN = [5, 5, 5, 5, 5];
       const g = String(m.g || '');
       const a = Array.isArray(m.a) ? m.a.slice(0, 5) : null;
+      // 信任模型：与大厅原一致——房主不代客人判定里程碑解锁（客人档案在本地），仅校验枪名合法 + 配件范围
       if (pl && GUNS_OK[g] && a && a.length === 5 && a.every((v, i) => Number.isInteger(v + 0) && (v | 0) >= 0 && (v | 0) < SLOT_LEN[i])) {
         pl.weapon = { gun: g, atts: a.map(v => v | 0) };
         // 客人的 wsel 在房主 spawnPlayer 之后才到：未开火过则按新武器满弹匣，中途改装仅削减
@@ -304,7 +332,8 @@ Net._hostDropSlot = function (slot, why) {
 
 Net._hostGuestFire = function (pl, m) {
   const t = DF.time;
-  if (!pl.alive || t - (pl.lastFire || 0) < CFG.fireRate * 0.92) return;
+  const br = DF.gunFireRate ? DF.gunFireRate(pl) : CFG.fireRate;
+  if (!pl.alive || t - (pl.lastFire || 0) < br * 0.92) return;
   if (pl.reloading) return;
   if (pl.ammo <= 0) { DF.startReload(pl); return; }
   pl.lastFire = t;
@@ -459,8 +488,9 @@ Net.connectAsGuest = async function (offerCode, myName) {
     if (this.connected) return;
     this.connected = true;
     this._startGuestLoops();
-    this._sendRel({ t: 'hello', name: myName || DF.nickname });
-    setTimeout(() => this._sendRel({ t: 'hello', name: myName || DF.nickname }), 500);
+    const opId = (typeof DF.selectedOperator === 'function') ? DF.selectedOperator() : null;
+    this._sendRel({ t: 'hello', name: myName || DF.nickname, op: opId });
+    setTimeout(() => this._sendRel({ t: 'hello', name: myName || DF.nickname, op: opId }), 500);
     DF.M.onConnected && DF.M.onConnected();
   };
   const cRel = pc.createDataChannel('g-rel', { ordered: true });
