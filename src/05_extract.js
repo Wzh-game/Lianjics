@@ -53,7 +53,7 @@ const CONTAINER_TYPES = {
    资产档案（持久化）
    ============================================================ */
 DF.Profile = {
-  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0 },
+  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0, safeBonus: 0 },
   load() {
     try {
       const raw = localStorage.getItem('df_profile');
@@ -100,6 +100,8 @@ DF.Profile = {
     return (this.xp() % XP_PER) / XP_PER;
   }
 };
+/* 保险箱容量：基础 2 格 + 购买扩容（最多 +2） */
+DF.safeCapacity = function () { return SAFE_SLOTS + Math.min(2, (DF.Profile && DF.Profile.data ? (DF.Profile.data.safeBonus | 0) : 0)); };
 
 /* ============================================================
    玩家资产容器（背包 / 保险箱）
@@ -542,7 +544,7 @@ DF.moveToSafe = function (bagIdx) {
   if (!me || !me.inv) return;
   const it = me.inv.bag[bagIdx];
   if (!it) return;
-  if (me.inv.safe.length >= SAFE_SLOTS) { DF.toast('保险箱已满（' + SAFE_SLOTS + ' 格）'); return; }
+  if (me.inv.safe.length >= DF.safeCapacity()) { DF.toast('保险箱已满（' + DF.safeCapacity() + ' 格）'); return; }
   me.inv.bag.splice(bagIdx, 1);
   me.inv.safe.push(it);
   DF.toast(`已放入保险箱：${LOOT[it.key].name}（阵亡后仍保留）`);

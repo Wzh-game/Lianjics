@@ -467,6 +467,7 @@ body.touchmode #joystickHint{display:none}
 .df-nick{background:transparent;border:none;border-bottom:1px solid transparent;color:#fff;font-size:17px;font-weight:800;
   letter-spacing:1px;width:150px;padding:1px 2px;outline:none}
 .df-nick:focus{border-bottom-color:var(--accent)}
+.df-avatar.framed{box-shadow:0 0 0 2px #141a0e,0 0 0 4px #7dd069,0 0 20px rgba(125,208,105,.5);border-radius:10px}
 .df-lvl{background:var(--accent);color:#1a1206;font-size:11px;font-weight:900;padding:2px 8px;letter-spacing:1px;
   clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
 .df-xpbar{width:170px;height:3px;background:rgba(255,255,255,.14)}
@@ -643,7 +644,7 @@ body.touchmode #joystickHint{display:none}
   <!-- ════════ 顶部栏 ════════ -->
   <header class="df-topbar">
     <div class="df-player">
-      <div class="df-avatar" aria-hidden="true">
+      <div class="df-avatar" id="df-avatar-top" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none"><path d="M24 6 42 40H6L24 6Z" stroke="#ffb347" stroke-width="2.6" stroke-linejoin="round"/><path d="M24 18 34 36H14L24 18Z" fill="#ff8c1a"/></svg>
       </div>
       <div class="df-pinfo">
@@ -5685,7 +5686,7 @@ const CONTAINER_TYPES = {
    资产档案（持久化）
    ============================================================ */
 DF.Profile = {
-  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0 },
+  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0, safeBonus: 0 },
   load() {
     try {
       const raw = localStorage.getItem('df_profile');
@@ -5732,6 +5733,8 @@ DF.Profile = {
     return (this.xp() % XP_PER) / XP_PER;
   }
 };
+/* 保险箱容量：基础 2 格 + 购买扩容（最多 +2） */
+DF.safeCapacity = function () { return SAFE_SLOTS + Math.min(2, (DF.Profile && DF.Profile.data ? (DF.Profile.data.safeBonus | 0) : 0)); };
 
 /* ============================================================
    玩家资产容器（背包 / 保险箱）
@@ -6174,7 +6177,7 @@ DF.moveToSafe = function (bagIdx) {
   if (!me || !me.inv) return;
   const it = me.inv.bag[bagIdx];
   if (!it) return;
-  if (me.inv.safe.length >= SAFE_SLOTS) { DF.toast('保险箱已满（' + SAFE_SLOTS + ' 格）'); return; }
+  if (me.inv.safe.length >= DF.safeCapacity()) { DF.toast('保险箱已满（' + DF.safeCapacity() + ' 格）'); return; }
   me.inv.bag.splice(bagIdx, 1);
   me.inv.safe.push(it);
   DF.toast(`已放入保险箱：${LOOT[it.key].name}（阵亡后仍保留）`);
@@ -6432,7 +6435,7 @@ DF.refreshLootUI = function () {
   });
 
   /* 保险箱 */
-  document.getElementById('safeCount').textContent = me.inv.safe.length + '/' + SAFE_SLOTS;
+  document.getElementById('safeCount').textContent = me.inv.safe.length + '/' + (DF.safeCapacity ? DF.safeCapacity() : SAFE_SLOTS);
   const sg = document.getElementById('safeGrid');
   let sh = me.inv.safe.map(it => {
     const d = LOOT[it.key];
@@ -6440,7 +6443,8 @@ DF.refreshLootUI = function () {
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${d.short}</span>
       <span style="color:#ffb347;font-size:10.5px">$${d.value >= 1000 ? (d.value / 1000).toFixed(1) + 'k' : d.value}</span></div>`;
   }).join('');
-  for (let i = me.inv.safe.length; i < SAFE_SLOTS; i++) sh += '<div class="safeslot" style="opacity:.45;justify-content:center">空</div>';
+  const safeCap = DF.safeCapacity ? DF.safeCapacity() : SAFE_SLOTS;
+  for (let i = me.inv.safe.length; i < safeCap; i++) sh += '<div class="safeslot" style="opacity:.45;justify-content:center">空</div>';
   sg.innerHTML = sh;
 
   /* 价值 */
@@ -6712,9 +6716,21 @@ DF.WujiaMusic.init();
   }
   window.DFswitchTab = switchTab;
 
+  /* 列表重渲染后仍是同一 grid 元素：事件只绑定一次（防重复触发/重复扣款） */
+  const wireOnce = (el, key, fn) => { if (el && !el[key]) { el[key] = true; el.addEventListener('click', fn); } };
+
+  /* ---------- 付费干员 / 头像框 状态 ---------- */
+  const OPS_KEY = 'df_owned_ops';
+  const loadOwnedOps = () => { try { const a = JSON.parse(localStorage.getItem(OPS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const saveOwnedOps = a => { try { localStorage.setItem(OPS_KEY, JSON.stringify(a)); } catch (e) { } };
+  const FRAME_KEY = 'df_frame';
+  const hasFrame = () => { try { return localStorage.getItem(FRAME_KEY) === '1'; } catch (e) { return false; } };
+  const setFrame = v => { try { localStorage.setItem(FRAME_KEY, v ? '1' : '0'); } catch (e) { } };
+
   /* ---------- 干员 ---------- */
   const OPERATORS = [
     { id: 'hwolf',  name: '红狼', en: 'D-WOLF',  role: '突击 · 进攻核心', desc: '近距离爆发见长的突击干员，适合正面打开突破口，搜打撤老手之选。', power: 82, c1: '#ff8c1a', c2: '#5a3410' },
+    { id: 'bullot', name: '莽兽', en: 'BULLET',  role: '重装 · 突破',     desc: 'S1 首发付费干员。重装突破型，购买即永久解锁出战。',             power: 78, c1: '#d06a6a', c2: '#3e1616', premium: true, price: 240 },
     { id: 'weilong',name: '威龙', en: 'STRIKER', role: '突击 · 均衡型',   desc: '无明显短板的标准答案，从新手到老兵都能稳定发挥的万金油。',     power: 74, c1: '#e0d060', c2: '#4a4218' },
     { id: 'fengyi', name: '蜂医', en: 'SHEPHERD',role: '支援 · 救援',     desc: '战场上最值得信赖的生命线，专注于拉人、保人、把队友带出撤离点。', power: 68, c1: '#7dd069', c2: '#1e3a1c' },
     { id: 'gu',     name: '蛊',   en: 'TOX',     role: '工兵 · 破障',     desc: '以装备与陷阱掌控地形，擅长把敌人逼进自己铺好的杀戮区。',       power: 71, c1: '#c07ad8', c2: '#33203e' },
@@ -6734,23 +6750,35 @@ DF.WujiaMusic.init();
   function renderOperators() {
     const grid = $('op-grid');
     if (!grid) return;
+    const ownedOps = loadOwnedOps();
+    const isUnlocked = o => !o.premium || ownedOps.includes(o.id);
     let sel = 'hwolf';
     try { sel = localStorage.getItem('df_operator') || 'hwolf'; } catch (e) { }
-    grid.innerHTML = OPERATORS.map(o => `
-      <div class="df-opcard${o.id === sel ? ' sel' : ''}" data-op="${o.id}" tabindex="0" role="button" aria-label="选择干员 ${o.name}">
+    // 已选中的干员被退回时（异常情况）回落红狼
+    if (!isUnlocked(OPERATORS.find(o => o.id === sel) || OPERATORS[0])) sel = 'hwolf';
+    grid.innerHTML = OPERATORS.map(o => {
+      const locked = !isUnlocked(o);
+      return `
+      <div class="df-opcard${o.id === sel && !locked ? ' sel' : ''}${locked ? ' locked' : ''}" data-op="${o.id}" tabindex="0" role="button" aria-label="选择干员 ${o.name}">
         ${opIcon(o)}
-        <div class="df-opname">${o.name}</div>
+        <div class="df-opname">${o.name}${locked ? ' <span class="df-oplock">🔒</span>' : ''}</div>
         <div class="df-oprole">${o.role} · ${o.en}</div>
-        <div class="df-opdesc">${o.desc}</div>
+        <div class="df-opdesc">${locked ? '商城购买「干员『' + o.name + '』档案 · ' + (o.price || 0) + ' 三角券 即可解锁出战。' : o.desc}</div>
         <div class="df-opbar"><span>战力</span><div class="bar"><i style="width:${o.power}%"></i></div><span>${o.power}</span></div>
-      </div>`).join('');
-    grid.addEventListener('click', e => {
+      </div>`;
+    }).join('');
+    wireOnce(grid, '__opsWired', e => {
       const card = e.target.closest('.df-opcard');
       if (!card) return;
-      sel = card.getAttribute('data-op');
+      const opId = card.getAttribute('data-op');
+      const op = OPERATORS.find(o => o.id === opId);
+      if (op && op.premium && !loadOwnedOps().includes(op.id)) {
+        toast(`「${op.name}」未解锁：商城购买「干员『${op.name}』档案」（${op.price || 0} 三角券）`);
+        return;
+      }
+      sel = opId;
       try { localStorage.setItem('df_operator', sel); } catch (err) { }
-      grid.querySelectorAll('.df-opcard').forEach(c => c.classList.toggle('sel', c === card));
-      const op = OPERATORS.find(o => o.id === sel);
+      grid.querySelectorAll('.df-opcard').forEach(c => c.classList.toggle('sel', c.getAttribute('data-op') === sel));
       toast(`已选择干员「${op ? op.name : sel}」`);
     });
   }
@@ -6793,7 +6821,7 @@ DF.WujiaMusic.init();
     { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', max: 3, cur: d => d.extracted | 0, award: '5,000 哈弗币 + 20 三角券', hafu: 5000, delta: 20 },
     { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', max: 25, cur: d => d.kills | 0, award: '3,000 哈弗币 + 10 三角券', hafu: 3000, delta: 10 },
     { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', max: 40, cur: d => d.searched | 0, award: '2,000 哈弗币 + 5 三角券', hafu: 2000, delta: 5 },
-    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30 }
+    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30, frame: true }
   ];
 
   const CLAIMED_KEY = 'df_missions_claimed';
@@ -6810,6 +6838,8 @@ DF.WujiaMusic.init();
     setText('player-lvl', 'LV.' + p.level());
     const bar = $('player-xpbar');
     if (bar) bar.style.width = Math.round(p.levelProgress() * 100) + '%';
+    const av = $('df-avatar-top');
+    if (av) av.classList.toggle('framed', hasFrame());
   }
   DF.renderTopBar = renderTopBar;
   function refreshMissionBadge() {
@@ -6843,7 +6873,7 @@ DF.WujiaMusic.init();
       </div>`;
     }).join('');
     refreshMissionBadge();
-    list.addEventListener('click', e => {
+    wireOnce(list, '__missionWired', e => {
       const btn = e.target.closest('.df-mclaim');
       if (!btn || btn.disabled) return;
       const idx = Number(btn.getAttribute('data-idx'));
@@ -6853,6 +6883,7 @@ DF.WujiaMusic.init();
         DF.Profile.data.bank += (m.hafu | 0);
         DF.Profile.data.delta = (DF.Profile.data.delta | 0) + (m.delta | 0);
         DF.Profile.save();
+        if (m.frame) setFrame(true);
         if (DF.renderProfile) DF.renderProfile();
         renderTopBar();
       }
@@ -6866,29 +6897,67 @@ DF.WujiaMusic.init();
     });
   }
 
-  /* ---------- 商城 ---------- */
+  /* ---------- 商城（四件实物商品：钱货两讫，持久化生效） ---------- */
   const SHOP = [
-    { n: '干员「红狼」档案', d: 'S1 首发干员。近战突击型，附赠专属出生动画与语音。', p: '240 三角券', color: '#ff8c1a', glyph: 'M32 10 50 22v18L32 54 14 40V22Z' },
-    { n: 'M4A1「沙暴」涂装', d: '沙暴迷彩战术涂装，含击杀播报特效「沙暴降临」。', p: '120 三角券', color: '#e0b45a', glyph: 'M12 34h96l10-14h14v12l10 2v6h-18l-8 8h-8l4-8H24l-4 8H10z' },
-    { n: '头像框「吴家村守望者」', d: '纪念吴家村首个 S1 赛季 · 永久头像框。', p: '60 三角券', color: '#7dd069', glyph: 'M32 8 52 18v26L32 56 12 44V18Z' },
-    { n: '弹药补给礼包', d: '含 5.56/5.45 弹药各 240 发 + 医疗包 ×3（游戏内发放）。', p: '8,000 哈弗币', color: '#6ac3d8', glyph: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z' }
+    { id: 'op_bullot', n: '干员「莽兽」档案', d: 'S1 首发付费干员 · 重装突破型。购买即永久解锁出战（干员页可选）。', p: '240 三角券', price: 240, color: '#d06a6a', glyph: 'M32 10 50 22v18L32 54 14 40V22Z' },
+    { id: 'm4a1_sand', n: 'M4A1「沙暴」涂装', d: '沙暴迷彩战术涂装。购买后 M4A1 持枪模型自动换装沙暴配色。', p: '120 三角券', price: 120, color: '#e0b45a', glyph: 'M12 34h96l10-14h14v12l10 2v6h-18l-8 8h-8l4-8H24l-4 8H10z' },
+    { id: 'frame_wujia', n: '头像框「吴家村守望者」', d: 'S1 赛季永久头像框，点亮大厅头像。黑石行动任务奖励亦可获得。', p: '60 三角券', price: 60, color: '#7dd069', glyph: 'M32 8 52 18v26L32 56 12 44V18Z' },
+    { id: 'safe_plus', n: '扩容保险箱 +1 格', d: '安全箱永久 +1 格（最多 +2，当前基础 2 格 + 已购扩容）。阵亡也保得住更多物资。', p: '150 三角券', price: 150, color: '#c9a25a', glyph: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z' }
   ];
-
+  const shopItemState = item => {
+    const prof = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile.data : null;
+    switch (item.id) {
+      case 'op_bullot': return { owned: loadOwnedOps().includes('bullot') };
+      case 'm4a1_sand': return { owned: !!(DF.skins && DF.skins.owned().includes('m4a1_sand')) };
+      case 'frame_wujia': return { owned: hasFrame() };
+      case 'safe_plus': { const n = prof ? (prof.safeBonus | 0) : 0; return { owned: n >= 2, count: n }; }
+      default: return { owned: false };
+    }
+  };
+  function buyItem(item) {
+    const st = shopItemState(item);
+    if (item.id === 'safe_plus') {
+      if ((DF.Profile.data.safeBonus | 0) >= 2) { toast('扩容保险箱已达上限（+2）'); return; }
+    } else if (st.owned) { toast(`「${item.n}」已拥有`); return; }
+    const price = item.price | 0;
+    const delta = DF.Profile.data.delta | 0;
+    if (delta < price) { toast(`三角券不足：还差 ${price - delta} 枚（对局任务可获取）`); return; }
+    DF.Profile.data.delta = delta - price;
+    switch (item.id) {
+      case 'op_bullot': saveOwnedOps([...loadOwnedOps(), 'bullot']); break;
+      case 'm4a1_sand': if (DF.skins) DF.skins.own('m4a1_sand'); break;
+      case 'frame_wujia': setFrame(true); break;
+      case 'safe_plus': DF.Profile.data.safeBonus = (DF.Profile.data.safeBonus | 0) + 1; break;
+    }
+    DF.Profile.save();
+    toast(`「${item.n}」购买成功`);
+    renderShop();
+    renderOperators();
+    renderTopBar();
+    if (DF.renderProfile) DF.renderProfile();
+    if (DF.syncViewModel) DF.syncViewModel();
+  }
   function renderShop() {
     const grid = $('shop-grid');
     if (!grid) return;
-    grid.innerHTML = SHOP.map(s => `
+    grid.innerHTML = SHOP.map(s => {
+      const st = shopItemState(s);
+      const countNote = (s.id === 'safe_plus' && st.count > 0) ? `（已购 ×${st.count}）` : '';
+      const btn = st.owned ? '已 拥 有' : '购 买';
+      return `
       <div class="df-shopcard">
         <div class="art"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path d="${s.glyph}" fill="none" stroke="${s.color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
         <div class="n">${s.n}</div>
         <div class="d">${s.d}</div>
-        <div class="df-price">${s.p}</div>
-        <button class="df-buy" data-name="${s.n}">购 买</button>
-      </div>`).join('');
-    grid.addEventListener('click', e => {
+        <div class="df-price">${s.p}${countNote}</div>
+        <button class="df-buy" data-id="${s.id}" ${st.owned ? 'disabled' : ''}>${btn}</button>
+      </div>`;
+    }).join('');
+    wireOnce(grid, '__shopWired', e => {
       const btn = e.target.closest('.df-buy');
-      if (!btn) return;
-      toast(`「${btn.getAttribute('data-name')}」将随正式服开放购买`);
+      if (!btn || btn.disabled) return;
+      const item = SHOP.find(x => x.id === btn.getAttribute('data-id'));
+      if (item) buyItem(item);
     });
   }
 
@@ -7376,6 +7445,16 @@ DF.WujiaMusic.init();
      与 createViewModel 共用一套局部坐标（-z 向前）；
      DF.syncViewModel() 按「当前出战枪 + 配件」重建枪组
      ============================================================ */
+  /* ---------- 涂装（商城购买 · 持久化） ---------- */
+  const SKINS_KEY = 'df_skins';
+  const loadSkins = () => { try { const a = JSON.parse(localStorage.getItem(SKINS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const saveSkins = a => { try { localStorage.setItem(SKINS_KEY, JSON.stringify(a)); } catch (e) { } };
+  DF.skins = {
+    owned: () => loadSkins(),
+    isOn: key => loadSkins().includes(key),
+    own: key => { const a = loadSkins(); if (!a.includes(key)) { a.push(key); saveSkins(a); } }
+  };
+
   const GUN_SPECS = {
     m4a1: { receiver: [0.075, 0.10, 0.40], receiverZ: -0.12, rail: 0.52, railZ: -0.18,
       hand: [0.068, 0.078, 0.34], handZ: -0.44, handMat: 'tan', vents: 5,
@@ -7436,6 +7515,12 @@ DF.WujiaMusic.init();
     });
     const w = DF.equippedWeapon();
     const spec = GUN_SPECS[w.gun] || GUN_SPECS.m4a1;
+    // 沙暴涂装：持有 m4a1_sand 且出战 M4A1 时，机匣/护木等换沙暴色（临时材质随枪组释放）
+    const sandOn = w.gun === 'm4a1' && DF.skins && DF.skins.isOn('m4a1_sand');
+    const sand = h => { const m = new T.MeshStandardMaterial({ color: h, roughness: 0.72, metalness: 0.35 }); m.__gmTemp = true; return m; };
+    const sandBody = sandOn ? sand(0x8a7648) : null;
+    const sandBody2 = sandOn ? sand(0x6e5b33) : null;
+    const sandTan = sandOn ? sand(0x9a8a5e) : null;
     const atts = (Array.isArray(w.atts) && w.atts.length === 5) ? w.atts : [0, 0, 0, 0, 0];
     const box = (x, y, z) => new T.BoxGeometry(x, y, z);
     const cyl = (r, len) => new T.CylinderGeometry(r, r, len, 12);
@@ -7450,15 +7535,15 @@ DF.WujiaMusic.init();
     const v3 = (hex, opacity) => { const m = new T.MeshStandardMaterial({ color: hex, roughness: 0.15, metalness: 0.3, transparent: true, opacity }); m.__gmTemp = true; return m; };
 
     // ===== 机匣 =====
-    add(box(spec.receiver[0], spec.receiver[1], spec.receiver[2]), M.body, 0, 0, spec.receiverZ);
+    add(box(spec.receiver[0], spec.receiver[1], spec.receiver[2]), sandBody || M.body, 0, 0, spec.receiverZ);
     // ===== 上导轨 =====
-    add(box(0.055, 0.024, spec.rail), M.body2, 0, 0.062, spec.railZ);
+    add(box(0.055, 0.024, spec.rail), sandBody2 || M.body2, 0, 0.062, spec.railZ);
     // ===== 护木 =====
-    add(box(spec.hand[0], spec.hand[1], spec.hand[2]), M[spec.handMat] || M.tan, 0, -0.002, spec.handZ);
+    add(box(spec.hand[0], spec.hand[1], spec.hand[2]), sandTan || M[spec.handMat] || M.tan, 0, -0.002, spec.handZ);
     // ===== 散热孔 =====
     for (let i = 0; i < (spec.vents || 0); i++) add(box(0.072, 0.012, 0.022), M.body, 0, 0.012, -0.30 - i * 0.055);
     // ===== 枪管 =====
-    const barrel = add(cyl(spec.barrelR, spec.barrelLen), M.body, 0, 0.012, spec.barrelZ, Math.PI / 2);
+    const barrel = add(cyl(spec.barrelR, spec.barrelLen), sandBody || M.body, 0, 0.012, spec.barrelZ, Math.PI / 2);
     // ===== VSS 一体消音套筒 =====
     if (spec.integralSupp) add(cyl(spec.integralSupp.r, spec.integralSupp.len), M.body2, 0, 0.012, spec.integralSupp.z, Math.PI / 2);
     // ===== M249 两脚架 =====
@@ -7483,7 +7568,7 @@ DF.WujiaMusic.init();
     const magMesh = add(magGeo, M[spec.magMat] || M.body2, 0, magCY, spec.receiverZ + 0.02, spec.magRot);
     if (spec.magRot) magMesh.rotation.x = spec.magRot;   // AK 弯弹匣
     // ===== 握把 =====
-    add(box(0.05, 0.15, 0.07), M.body, 0, -0.12, 0.06, 0.28);
+    add(box(0.05, 0.15, 0.07), sandBody || M.body, 0, -0.12, 0.06, 0.28);
     // ===== 前握把（配件位 3） =====
     if (atts[2] > 0) {
       const rot = atts[2] === 2 ? -0.4 : 0.12;
@@ -7495,7 +7580,7 @@ DF.WujiaMusic.init();
     if (atts[4] === 1) { stockScale = 0.78; stockLen *= 0.8; }
     else if (atts[4] === 3) { stockScale = 1.28; stockLen *= 1.12; }
     const stockCenter = 0.08 + stockLen / 2 - 0.02;
-    add(box(spec.stock[0] * stockScale, spec.stock[1] * stockScale, stockLen), M[spec.stockMat] || M.body2, 0, -0.005, stockCenter);
+    add(box(spec.stock[0] * stockScale, spec.stock[1] * stockScale, stockLen), sandBody2 || M[spec.stockMat] || M.body2, 0, -0.005, stockCenter);
     if (atts[4] === 2) add(box(0.034, 0.022, 0.11), M.rubber, 0, 0.045, stockCenter + 0.01);          // 战术托颊腮
     else if (atts[4] === 4) add(box(0.055, 0.1, 0.03), M.rubber, 0, -0.01, stockCenter + stockLen / 2 - 0.01, 0.35);  // 射手托底板
     // ===== 瞄具（配件位 1；0 = 原厂默认） =====

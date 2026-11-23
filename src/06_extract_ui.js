@@ -221,7 +221,7 @@ DF.refreshLootUI = function () {
   });
 
   /* 保险箱 */
-  document.getElementById('safeCount').textContent = me.inv.safe.length + '/' + SAFE_SLOTS;
+  document.getElementById('safeCount').textContent = me.inv.safe.length + '/' + (DF.safeCapacity ? DF.safeCapacity() : SAFE_SLOTS);
   const sg = document.getElementById('safeGrid');
   let sh = me.inv.safe.map(it => {
     const d = LOOT[it.key];
@@ -229,7 +229,8 @@ DF.refreshLootUI = function () {
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${d.short}</span>
       <span style="color:#ffb347;font-size:10.5px">$${d.value >= 1000 ? (d.value / 1000).toFixed(1) + 'k' : d.value}</span></div>`;
   }).join('');
-  for (let i = me.inv.safe.length; i < SAFE_SLOTS; i++) sh += '<div class="safeslot" style="opacity:.45;justify-content:center">空</div>';
+  const safeCap = DF.safeCapacity ? DF.safeCapacity() : SAFE_SLOTS;
+  for (let i = me.inv.safe.length; i < safeCap; i++) sh += '<div class="safeslot" style="opacity:.45;justify-content:center">空</div>';
   sg.innerHTML = sh;
 
   /* 价值 */

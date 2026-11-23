@@ -467,6 +467,7 @@ body.touchmode #joystickHint{display:none}
 .df-nick{background:transparent;border:none;border-bottom:1px solid transparent;color:#fff;font-size:17px;font-weight:800;
   letter-spacing:1px;width:150px;padding:1px 2px;outline:none}
 .df-nick:focus{border-bottom-color:var(--accent)}
+.df-avatar.framed{box-shadow:0 0 0 2px #141a0e,0 0 0 4px #7dd069,0 0 20px rgba(125,208,105,.5);border-radius:10px}
 .df-lvl{background:var(--accent);color:#1a1206;font-size:11px;font-weight:900;padding:2px 8px;letter-spacing:1px;
   clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
 .df-xpbar{width:170px;height:3px;background:rgba(255,255,255,.14)}
@@ -643,7 +644,7 @@ body.touchmode #joystickHint{display:none}
   <!-- ════════ 顶部栏 ════════ -->
   <header class="df-topbar">
     <div class="df-player">
-      <div class="df-avatar" aria-hidden="true">
+      <div class="df-avatar" id="df-avatar-top" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none"><path d="M24 6 42 40H6L24 6Z" stroke="#ffb347" stroke-width="2.6" stroke-linejoin="round"/><path d="M24 18 34 36H14L24 18Z" fill="#ff8c1a"/></svg>
       </div>
       <div class="df-pinfo">

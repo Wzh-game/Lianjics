@@ -41,9 +41,21 @@
   }
   window.DFswitchTab = switchTab;
 
+  /* 列表重渲染后仍是同一 grid 元素：事件只绑定一次（防重复触发/重复扣款） */
+  const wireOnce = (el, key, fn) => { if (el && !el[key]) { el[key] = true; el.addEventListener('click', fn); } };
+
+  /* ---------- 付费干员 / 头像框 状态 ---------- */
+  const OPS_KEY = 'df_owned_ops';
+  const loadOwnedOps = () => { try { const a = JSON.parse(localStorage.getItem(OPS_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const saveOwnedOps = a => { try { localStorage.setItem(OPS_KEY, JSON.stringify(a)); } catch (e) { } };
+  const FRAME_KEY = 'df_frame';
+  const hasFrame = () => { try { return localStorage.getItem(FRAME_KEY) === '1'; } catch (e) { return false; } };
+  const setFrame = v => { try { localStorage.setItem(FRAME_KEY, v ? '1' : '0'); } catch (e) { } };
+
   /* ---------- 干员 ---------- */
   const OPERATORS = [
     { id: 'hwolf',  name: '红狼', en: 'D-WOLF',  role: '突击 · 进攻核心', desc: '近距离爆发见长的突击干员，适合正面打开突破口，搜打撤老手之选。', power: 82, c1: '#ff8c1a', c2: '#5a3410' },
+    { id: 'bullot', name: '莽兽', en: 'BULLET',  role: '重装 · 突破',     desc: 'S1 首发付费干员。重装突破型，购买即永久解锁出战。',             power: 78, c1: '#d06a6a', c2: '#3e1616', premium: true, price: 240 },
     { id: 'weilong',name: '威龙', en: 'STRIKER', role: '突击 · 均衡型',   desc: '无明显短板的标准答案，从新手到老兵都能稳定发挥的万金油。',     power: 74, c1: '#e0d060', c2: '#4a4218' },
     { id: 'fengyi', name: '蜂医', en: 'SHEPHERD',role: '支援 · 救援',     desc: '战场上最值得信赖的生命线，专注于拉人、保人、把队友带出撤离点。', power: 68, c1: '#7dd069', c2: '#1e3a1c' },
     { id: 'gu',     name: '蛊',   en: 'TOX',     role: '工兵 · 破障',     desc: '以装备与陷阱掌控地形，擅长把敌人逼进自己铺好的杀戮区。',       power: 71, c1: '#c07ad8', c2: '#33203e' },
@@ -63,23 +75,35 @@
   function renderOperators() {
     const grid = $('op-grid');
     if (!grid) return;
+    const ownedOps = loadOwnedOps();
+    const isUnlocked = o => !o.premium || ownedOps.includes(o.id);
     let sel = 'hwolf';
     try { sel = localStorage.getItem('df_operator') || 'hwolf'; } catch (e) { }
-    grid.innerHTML = OPERATORS.map(o => `
-      <div class="df-opcard${o.id === sel ? ' sel' : ''}" data-op="${o.id}" tabindex="0" role="button" aria-label="选择干员 ${o.name}">
+    // 已选中的干员被退回时（异常情况）回落红狼
+    if (!isUnlocked(OPERATORS.find(o => o.id === sel) || OPERATORS[0])) sel = 'hwolf';
+    grid.innerHTML = OPERATORS.map(o => {
+      const locked = !isUnlocked(o);
+      return `
+      <div class="df-opcard${o.id === sel && !locked ? ' sel' : ''}${locked ? ' locked' : ''}" data-op="${o.id}" tabindex="0" role="button" aria-label="选择干员 ${o.name}">
         ${opIcon(o)}
-        <div class="df-opname">${o.name}</div>
+        <div class="df-opname">${o.name}${locked ? ' <span class="df-oplock">🔒</span>' : ''}</div>
         <div class="df-oprole">${o.role} · ${o.en}</div>
-        <div class="df-opdesc">${o.desc}</div>
+        <div class="df-opdesc">${locked ? '商城购买「干员『' + o.name + '』档案 · ' + (o.price || 0) + ' 三角券 即可解锁出战。' : o.desc}</div>
         <div class="df-opbar"><span>战力</span><div class="bar"><i style="width:${o.power}%"></i></div><span>${o.power}</span></div>
-      </div>`).join('');
-    grid.addEventListener('click', e => {
+      </div>`;
+    }).join('');
+    wireOnce(grid, '__opsWired', e => {
       const card = e.target.closest('.df-opcard');
       if (!card) return;
-      sel = card.getAttribute('data-op');
+      const opId = card.getAttribute('data-op');
+      const op = OPERATORS.find(o => o.id === opId);
+      if (op && op.premium && !loadOwnedOps().includes(op.id)) {
+        toast(`「${op.name}」未解锁：商城购买「干员『${op.name}』档案」（${op.price || 0} 三角券）`);
+        return;
+      }
+      sel = opId;
       try { localStorage.setItem('df_operator', sel); } catch (err) { }
-      grid.querySelectorAll('.df-opcard').forEach(c => c.classList.toggle('sel', c === card));
-      const op = OPERATORS.find(o => o.id === sel);
+      grid.querySelectorAll('.df-opcard').forEach(c => c.classList.toggle('sel', c.getAttribute('data-op') === sel));
       toast(`已选择干员「${op ? op.name : sel}」`);
     });
   }
@@ -122,7 +146,7 @@
     { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', max: 3, cur: d => d.extracted | 0, award: '5,000 哈弗币 + 20 三角券', hafu: 5000, delta: 20 },
     { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', max: 25, cur: d => d.kills | 0, award: '3,000 哈弗币 + 10 三角券', hafu: 3000, delta: 10 },
     { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', max: 40, cur: d => d.searched | 0, award: '2,000 哈弗币 + 5 三角券', hafu: 2000, delta: 5 },
-    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30 }
+    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30, frame: true }
   ];
 
   const CLAIMED_KEY = 'df_missions_claimed';
@@ -139,6 +163,8 @@
     setText('player-lvl', 'LV.' + p.level());
     const bar = $('player-xpbar');
     if (bar) bar.style.width = Math.round(p.levelProgress() * 100) + '%';
+    const av = $('df-avatar-top');
+    if (av) av.classList.toggle('framed', hasFrame());
   }
   DF.renderTopBar = renderTopBar;
   function refreshMissionBadge() {
@@ -172,7 +198,7 @@
       </div>`;
     }).join('');
     refreshMissionBadge();
-    list.addEventListener('click', e => {
+    wireOnce(list, '__missionWired', e => {
       const btn = e.target.closest('.df-mclaim');
       if (!btn || btn.disabled) return;
       const idx = Number(btn.getAttribute('data-idx'));
@@ -182,6 +208,7 @@
         DF.Profile.data.bank += (m.hafu | 0);
         DF.Profile.data.delta = (DF.Profile.data.delta | 0) + (m.delta | 0);
         DF.Profile.save();
+        if (m.frame) setFrame(true);
         if (DF.renderProfile) DF.renderProfile();
         renderTopBar();
       }
@@ -195,29 +222,67 @@
     });
   }
 
-  /* ---------- 商城 ---------- */
+  /* ---------- 商城（四件实物商品：钱货两讫，持久化生效） ---------- */
   const SHOP = [
-    { n: '干员「红狼」档案', d: 'S1 首发干员。近战突击型，附赠专属出生动画与语音。', p: '240 三角券', color: '#ff8c1a', glyph: 'M32 10 50 22v18L32 54 14 40V22Z' },
-    { n: 'M4A1「沙暴」涂装', d: '沙暴迷彩战术涂装，含击杀播报特效「沙暴降临」。', p: '120 三角券', color: '#e0b45a', glyph: 'M12 34h96l10-14h14v12l10 2v6h-18l-8 8h-8l4-8H24l-4 8H10z' },
-    { n: '头像框「吴家村守望者」', d: '纪念吴家村首个 S1 赛季 · 永久头像框。', p: '60 三角券', color: '#7dd069', glyph: 'M32 8 52 18v26L32 56 12 44V18Z' },
-    { n: '弹药补给礼包', d: '含 5.56/5.45 弹药各 240 发 + 医疗包 ×3（游戏内发放）。', p: '8,000 哈弗币', color: '#6ac3d8', glyph: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z' }
+    { id: 'op_bullot', n: '干员「莽兽」档案', d: 'S1 首发付费干员 · 重装突破型。购买即永久解锁出战（干员页可选）。', p: '240 三角券', price: 240, color: '#d06a6a', glyph: 'M32 10 50 22v18L32 54 14 40V22Z' },
+    { id: 'm4a1_sand', n: 'M4A1「沙暴」涂装', d: '沙暴迷彩战术涂装。购买后 M4A1 持枪模型自动换装沙暴配色。', p: '120 三角券', price: 120, color: '#e0b45a', glyph: 'M12 34h96l10-14h14v12l10 2v6h-18l-8 8h-8l4-8H24l-4 8H10z' },
+    { id: 'frame_wujia', n: '头像框「吴家村守望者」', d: 'S1 赛季永久头像框，点亮大厅头像。黑石行动任务奖励亦可获得。', p: '60 三角券', price: 60, color: '#7dd069', glyph: 'M32 8 52 18v26L32 56 12 44V18Z' },
+    { id: 'safe_plus', n: '扩容保险箱 +1 格', d: '安全箱永久 +1 格（最多 +2，当前基础 2 格 + 已购扩容）。阵亡也保得住更多物资。', p: '150 三角券', price: 150, color: '#c9a25a', glyph: 'M14 26h36v20H14zM50 30h12v12H50zM22 20h4v6h-4zM34 20h4v6h-4z' }
   ];
-
+  const shopItemState = item => {
+    const prof = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile.data : null;
+    switch (item.id) {
+      case 'op_bullot': return { owned: loadOwnedOps().includes('bullot') };
+      case 'm4a1_sand': return { owned: !!(DF.skins && DF.skins.owned().includes('m4a1_sand')) };
+      case 'frame_wujia': return { owned: hasFrame() };
+      case 'safe_plus': { const n = prof ? (prof.safeBonus | 0) : 0; return { owned: n >= 2, count: n }; }
+      default: return { owned: false };
+    }
+  };
+  function buyItem(item) {
+    const st = shopItemState(item);
+    if (item.id === 'safe_plus') {
+      if ((DF.Profile.data.safeBonus | 0) >= 2) { toast('扩容保险箱已达上限（+2）'); return; }
+    } else if (st.owned) { toast(`「${item.n}」已拥有`); return; }
+    const price = item.price | 0;
+    const delta = DF.Profile.data.delta | 0;
+    if (delta < price) { toast(`三角券不足：还差 ${price - delta} 枚（对局任务可获取）`); return; }
+    DF.Profile.data.delta = delta - price;
+    switch (item.id) {
+      case 'op_bullot': saveOwnedOps([...loadOwnedOps(), 'bullot']); break;
+      case 'm4a1_sand': if (DF.skins) DF.skins.own('m4a1_sand'); break;
+      case 'frame_wujia': setFrame(true); break;
+      case 'safe_plus': DF.Profile.data.safeBonus = (DF.Profile.data.safeBonus | 0) + 1; break;
+    }
+    DF.Profile.save();
+    toast(`「${item.n}」购买成功`);
+    renderShop();
+    renderOperators();
+    renderTopBar();
+    if (DF.renderProfile) DF.renderProfile();
+    if (DF.syncViewModel) DF.syncViewModel();
+  }
   function renderShop() {
     const grid = $('shop-grid');
     if (!grid) return;
-    grid.innerHTML = SHOP.map(s => `
+    grid.innerHTML = SHOP.map(s => {
+      const st = shopItemState(s);
+      const countNote = (s.id === 'safe_plus' && st.count > 0) ? `（已购 ×${st.count}）` : '';
+      const btn = st.owned ? '已 拥 有' : '购 买';
+      return `
       <div class="df-shopcard">
         <div class="art"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path d="${s.glyph}" fill="none" stroke="${s.color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
         <div class="n">${s.n}</div>
         <div class="d">${s.d}</div>
-        <div class="df-price">${s.p}</div>
-        <button class="df-buy" data-name="${s.n}">购 买</button>
-      </div>`).join('');
-    grid.addEventListener('click', e => {
+        <div class="df-price">${s.p}${countNote}</div>
+        <button class="df-buy" data-id="${s.id}" ${st.owned ? 'disabled' : ''}>${btn}</button>
+      </div>`;
+    }).join('');
+    wireOnce(grid, '__shopWired', e => {
       const btn = e.target.closest('.df-buy');
-      if (!btn) return;
-      toast(`「${btn.getAttribute('data-name')}」将随正式服开放购买`);
+      if (!btn || btn.disabled) return;
+      const item = SHOP.find(x => x.id === btn.getAttribute('data-id'));
+      if (item) buyItem(item);
     });
   }
 
