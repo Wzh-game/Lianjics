@@ -742,6 +742,84 @@ body.touchmode #joystickHint{display:none}
   .df-opd-left{border-right:none;border-bottom:1px solid rgba(255,255,255,.07);padding:24px 18px 16px}
   .df-opd-name{font-size:26px}
 }
+/* ============ 云邮箱 ============ */
+.df-mailbtn{position:relative}
+.df-mail-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;
+  border-radius:9px;background:#ff5c33;color:#fff;font-size:10px;font-weight:700;line-height:18px;
+  text-align:center;box-shadow:0 0 0 2px rgba(10,12,8,.9)}
+.df-mail{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
+  background:rgba(4,7,4,.74);backdrop-filter:blur(6px);animation:dfOpdIn .2s ease}
+.df-mail[hidden]{display:none}
+.df-mail-panel{position:relative;width:min(760px,94vw);height:min(600px,88vh);display:flex;flex-direction:column;
+  background:linear-gradient(165deg,#121a10 0%,#0b100a 60%);border:1px solid rgba(120,220,150,.28);
+  box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 48px rgba(120,220,150,.07);
+  clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%)}
+.df-mail-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;padding:20px 22px 12px;
+  border-bottom:1px solid rgba(255,255,255,.07)}
+.df-mail-title{font-size:22px;font-weight:800;letter-spacing:4px;color:#e8f4de}
+.df-mail-title small{display:block;font-size:10px;letter-spacing:3px;color:#8b987c;margin-top:2px}
+.df-mail-addr{font-size:12px;color:#7ddba0;letter-spacing:1px;background:rgba(120,220,150,.08);
+  border:1px solid rgba(120,220,150,.3);padding:5px 12px;border-radius:3px;max-width:55%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.df-mail-close{position:absolute;top:10px;right:12px;width:36px;height:36px;border:1px solid rgba(255,255,255,.16);
+  background:rgba(0,0,0,.35);color:#dfe6cc;font-size:15px;cursor:pointer;border-radius:3px}
+.df-mail-close:hover{background:rgba(255,140,26,.25);color:#ffcf99}
+.df-mail-claim{padding:18px 22px 4px}
+.df-mail-claim-title{font-size:13px;color:#ffcf99;letter-spacing:1px;margin-bottom:8px}
+.df-mail-claim-row{display:flex;gap:10px}
+.df-mail-claim-hint{font-size:10.5px;color:#7c8a6a;line-height:1.7;margin-top:8px}
+.df-mail-input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:11px 12px;font-size:13px;color:#e8f4de;
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12);border-radius:3px;
+  font-family:inherit;outline:none;transition:border-color .15s}
+.df-mail-input:focus{border-color:rgba(120,220,150,.55)}
+.df-mail-input::placeholder{color:#6a7660}
+.df-mail-textarea{resize:none;line-height:1.7}
+.df-mail-send{padding:11px 22px;font-size:14px;font-weight:800;letter-spacing:6px;color:#07130a;border:none;cursor:pointer;
+  background:linear-gradient(180deg,#7dffa8,#2ecf6e);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.df-mail-send:hover{filter:brightness(1.08)}
+.df-mail-send[disabled]{background:#3c453a;color:#9aa78d;cursor:not-allowed}
+.df-mail-tabs{display:flex;gap:4px;padding:12px 16px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.df-mail-tabs button{background:none;border:none;color:#8b987c;font-size:12.5px;letter-spacing:2px;
+  padding:8px 14px 10px;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+.df-mail-tabs button.on{color:#7dffa8;border-bottom-color:#2ecf6e}
+.df-mail-unread{display:inline-block;min-width:16px;padding:0 4px;border-radius:8px;background:#ff5c33;color:#fff;
+  font-size:10px;line-height:16px;text-align:center}
+.df-mail-status{margin:10px 22px 0;padding:8px 12px;font-size:11px;line-height:1.6;color:#ffd2a8;
+  background:rgba(255,150,60,.10);border:1px solid rgba(255,170,80,.35);border-radius:3px}
+.df-mail-status.err{color:#ffb3a0;border-color:rgba(255,110,80,.45);background:rgba(255,90,60,.08)}
+.df-mail-body{position:relative;flex:1;min-height:0;padding:12px 16px 16px;overflow:auto}
+.df-mail-list{display:flex;flex-direction:column;gap:8px}
+.df-mail-empty{text-align:center;color:#6a7660;font-size:12px;padding:44px 0;letter-spacing:1px}
+.df-mail-item{display:flex;align-items:center;gap:12px;padding:11px 12px;cursor:pointer;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);border-radius:3px;transition:all .13s}
+.df-mail-item:hover{background:rgba(120,220,150,.07);border-color:rgba(120,220,150,.3)}
+.df-mail-item.unread{border-left:3px solid #2ecf6e}
+.df-mail-item-ic{flex:0 0 auto;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  border-radius:3px;background:rgba(120,220,150,.10);color:#7ddba0;font-size:17px}
+.df-mail-item-main{flex:1;min-width:0}
+.df-mail-item-from{font-size:12px;color:#9fe0b8;letter-spacing:.5px}
+.df-mail-item-title{font-size:13px;color:#e8f4de;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.df-mail-item.unread .df-mail-item-title{font-weight:700}
+.df-mail-item-time{flex:0 0 auto;font-size:10.5px;color:#6a7660}
+.df-mail-compose-foot{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+#mail-count{font-size:10.5px;color:#6a7660}
+.df-mail-reader{position:absolute;inset:12px 16px 16px;background:#0d130b;border:1px solid rgba(120,220,150,.25);
+  border-radius:3px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;overflow:auto;z-index:2}
+.df-mail-reader[hidden]{display:none}
+.df-mail-reader-bar{display:flex;justify-content:space-between}
+.df-mail-ghostbtn{background:none;border:1px solid rgba(255,255,255,.15);color:#c9d2b4;font-size:11px;
+  padding:6px 12px;cursor:pointer;border-radius:3px;font-family:inherit}
+.df-mail-ghostbtn:hover{border-color:rgba(120,220,150,.5);color:#7dffa8}
+.df-mail-ghostbtn.danger:hover{border-color:rgba(255,110,80,.6);color:#ff9d8a}
+.df-mail-reader-title{font-size:19px;font-weight:800;color:#e8f4de;letter-spacing:.5px}
+.df-mail-reader-meta{font-size:11px;color:#8b987c;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px}
+.df-mail-reader-body{font-size:13px;line-height:1.9;color:#d6dfc4;white-space:pre-wrap;word-break:break-word}
+@media (max-width:700px){
+  .df-mail-panel{height:94vh}
+  .df-mail-head{padding:16px 14px 10px}
+  .df-mail-addr{display:none}
+  .df-mail-body{padding:10px 10px 12px}
+}
 </style>
 
   <div class="df-vignette"></div>
@@ -774,7 +852,7 @@ body.touchmode #joystickHint{display:none}
         <b id="bank-delta">0</b><span>三角券</span>
         <button class="df-plus" data-toast="商城即将开放，敬请期待" aria-label="获取三角券">+</button>
       </div>
-      <button class="df-iconbtn" data-toast="暂无新邮件" aria-label="邮件">✉</button>
+      <button class="df-iconbtn df-mailbtn" id="btn-mail" aria-label="邮件">✉<span class="df-mail-badge" id="mail-badge" hidden>0</span></button>
       <button class="df-iconbtn" data-toast="设置面板即将开放" aria-label="设置">⚙</button>
     </div>
   </header>
@@ -843,7 +921,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.8.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.9.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -1027,7 +1105,56 @@ body.touchmode #joystickHint{display:none}
 <audio id="wujia-village-track" src="assets/wujia-village-shiyibi.mp3" preload="none" loop></audio>
 <div id="toast"></div>
 
+<!-- ───────── 云邮箱 ───────── -->
+<div class="df-mail" id="mail-modal" hidden role="dialog" aria-modal="true" aria-label="邮箱">
+  <div class="df-mail-panel" role="document">
+    <button class="df-mail-close" id="mail-close" aria-label="关闭">✕</button>
+    <div class="df-mail-head">
+      <div class="df-mail-title">邮箱<small>MAIL · 云端收件 · 地址即身份</small></div>
+      <div class="df-mail-addr" id="mail-addr">连接中…</div>
+    </div>
+    <div class="df-mail-claim" id="mail-claim" hidden>
+      <div class="df-mail-claim-title">首次使用，请设定你的邮箱地址</div>
+      <div class="df-mail-claim-row">
+        <input id="mail-handle-input" class="df-mail-input" placeholder="3-20 位小写字母 / 数字 / 下划线" maxlength="20" autocomplete="off" spellcheck="false">
+        <button class="df-mail-send" id="mail-claim-btn">确 定</button>
+      </div>
+      <div class="df-mail-claim-hint">地址一旦设定不可更改；其他玩家向该地址发信即可送达本设备。换设备或清缓存后地址会丢失（匿名账号无密码找回）。</div>
+    </div>
+    <div class="df-mail-tabs" id="mail-tabs" hidden>
+      <button class="on" data-mailtab="inbox">收件箱 <span class="df-mail-unread" id="mail-unread" hidden></span></button>
+      <button data-mailtab="sent">已发送</button>
+      <button data-mailtab="compose">写邮件</button>
+    </div>
+    <div class="df-mail-status" id="mail-status" hidden></div>
+    <div class="df-mail-body">
+      <div class="df-mail-pane" data-mailpane="inbox">
+        <div class="df-mail-list" id="mail-list"><div class="df-mail-empty">正在连接云端…</div></div>
+      </div>
+      <div class="df-mail-pane" data-mailpane="sent" hidden>
+        <div class="df-mail-list" id="mail-sent"><div class="df-mail-empty">本机暂无已发记录（仅存本机）</div></div>
+      </div>
+      <div class="df-mail-pane" data-mailpane="compose" hidden>
+        <input id="mail-to" class="df-mail-input" placeholder="收件人地址，例如 abc_123" maxlength="20" autocomplete="off" spellcheck="false">
+        <input id="mail-subject" class="df-mail-input" placeholder="标题（最多 100 字）" maxlength="100" autocomplete="off">
+        <textarea id="mail-body-input" class="df-mail-input df-mail-textarea" placeholder="正文（最多 2000 字）" maxlength="2000" rows="7"></textarea>
+        <div class="df-mail-compose-foot"><span id="mail-count">0 / 2000</span><button class="df-mail-send" id="mail-send">发 送</button></div>
+      </div>
+      <div class="df-mail-reader" id="mail-reader" hidden>
+        <div class="df-mail-reader-bar"><button class="df-mail-ghostbtn" id="mail-reader-back">← 返回列表</button><button class="df-mail-ghostbtn danger" id="mail-del">删除此邮件</button></div>
+        <div class="df-mail-reader-title" id="mail-reader-title"></div>
+        <div class="df-mail-reader-meta" id="mail-reader-meta"></div>
+        <div class="df-mail-reader-body" id="mail-reader-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <script>
 /*__THREE_INLINE__*/
+</script>
+<script>
+/*__FIREBASE_INLINE__*/
 </script>
 <script>

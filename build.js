@@ -1,8 +1,12 @@
 const fs=require('fs');
 const head=fs.readFileSync('src/00_head.html','utf8');
 const three=fs.readFileSync('src/three.min.js','utf8');
-const parts=['01_core.js','02_entities.js','03_net.js','04_game.js','05_extract.js','06_extract_ui.js', '07_wujia_music.js','08_lobby.js','09_vehicle.js','10_gunsmith.js','11_operators.js'].map(f=>fs.readFileSync('src/'+f,'utf8')).join('\n\n');
-let html=head.replace('/*__THREE_INLINE__*/', ()=>three);
+const fbApp=fs.readFileSync('src/vendor/firebase-app-compat.js','utf8');
+const fbAuth=fs.readFileSync('src/vendor/firebase-auth-compat.js','utf8');
+const fbFS=fs.readFileSync('src/vendor/firebase-firestore-compat.js','utf8');
+const firebase=[fbApp,fbAuth,fbFS].join('\n');
+const parts=['01_core.js','02_entities.js','03_net.js','04_game.js','05_extract.js','06_extract_ui.js', '07_wujia_music.js','08_lobby.js','09_vehicle.js','10_gunsmith.js','11_operators.js','12_mail.js'].map(f=>fs.readFileSync('src/'+f,'utf8')).join('\n\n');
+let html=head.replace('/*__THREE_INLINE__*/', ()=>three).replace('/*__FIREBASE_INLINE__*/', ()=>firebase);
 html+='\n'+parts+'\n</script>\n</body>\n</html>\n';
 fs.writeFileSync('index.html',html);
 console.log('index.html bytes:', html.length);
