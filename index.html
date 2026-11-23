@@ -6921,7 +6921,19 @@ DF.WujiaMusic.init();
     { id: 'fengyi', name: '蜂医', en: 'SHEPHERD',role: '支援 · 救援',     desc: '战场上最值得信赖的生命线，专注于拉人、保人、把队友带出撤离点。', power: 68, c1: '#7dd069', c2: '#1e3a1c' },
     { id: 'gu',     name: '蛊',   en: 'TOX',     role: '工兵 · 破障',     desc: '以装备与陷阱掌控地形，擅长把敌人逼进自己铺好的杀戮区。',       power: 71, c1: '#c07ad8', c2: '#33203e' },
     { id: 'luna',   name: '露娜', en: 'LUNA',    role: '侦察 · 信息',     desc: '掌握战场视野的人，才能掌握战局走向。开镜即索敌，信息即胜利。', power: 65, c1: '#6ac3d8', c2: '#163a44' },
-    { id: 'shendan',name: '深蓝', en: 'DEEPBLUE',role: '工程 · 防御',     desc: '防线的守护者，擅长在要点扎根、架设防御并反守为攻。',           power: 70, c1: '#8a9bd0', c2: '#1f2740' }
+    { id: 'shendan',name: '深蓝', en: 'DEEPBLUE',role: '工程 · 防御',     desc: '防线的守护者，擅长在要点扎根、架设防御并反守为攻。',           power: 70, c1: '#8a9bd0', c2: '#1f2740' },
+    { id: 'wuming', name: '无名', en: 'GHOST',   role: '突击 · 隐匿渗透', desc: '声波与侦察干扰，隐入阴影带着闪光弹与飞刃撕开突破口。',         power: 73, c1: '#9aa37a', c2: '#232620' },
+    { id: 'jfeng',  name: '疾风', en: 'ZEPHYR',  role: '突击 · 机动突袭', desc: '爆发型脊椎，翻滚位移、锚点回拉，把遭遇战打成自己的节奏。',     power: 76, c1: '#ffd27a', c2: '#3a2a10' },
+    { id: 'yehuo',  name: '野火', en: 'WILDFIRE',role: '突击 · 持续突破', desc: '愈战愈强，烟雾弹幕与盾式破障器正面碾开防线。',                 power: 77, c1: '#ff6a3a', c2: '#401208' },
+    { id: 'dié',    name: '蝶',   en: 'VLINDER', role: '支援 · 生命守护', desc: '生命体征监测与蝶式救援无人机群，队友在任何角落都能被拉回来。', power: 67, c1: '#e59ad8', c2: '#33152e' },
+    { id: 'lrying', name: '旅人', en: 'WANDERER',role: '支援 · 游击支援', desc: '求生专家四叶：气雾针剂枪与军犬协同的万金油支援位。',           power: 72, c1: '#d8b26a', c2: '#2e2412' },
+    { id: 'myang',  name: '牧羊人',en: 'WARDEN', role: '工程 · 控场',     desc: '声波脉冲与信号干扰，用噪音和电波把战场变成自己的耳朵。',       power: 69, c1: '#c9a25a', c2: '#26200e' },
+    { id: 'wululu', name: '乌鲁鲁',en: 'URIAL',  role: '工程 · 阵地战',   desc: '久经沙场，沙袋阵地与近炸地雷，让每一寸掩体都替他说话。',       power: 70, c1: '#c98a5a', c2: '#2e1a10' },
+    { id: 'byte',   name: '比特', en: 'BIT',     role: '工程 · 防守陷阱', desc: '机械蜘蛛织网、捕网陷阱封路，布下陷阱的猎手守着杀戮区。',       power: 66, c1: '#6ab4ff', c2: '#101f33' },
+    { id: 'yedan',  name: '液氮', en: 'CRYOGEN', role: '工程 · 冻结控制', desc: '连发冷凝榴弹与低温领域，把追击者一层层冻在原地。',             power: 68, c1: '#9fd8ff', c2: '#14303e' },
+    { id: 'haozhao',name: '骇爪', en: 'RAZOR',   role: '侦察 · 隐匿侦察', desc: '隐匿消声的寂静猎手——破译信号，敌人还没看见他就已暴露。',     power: 67, c1: '#a0b060', c2: '#1e2812' },
+    { id: 'yinyi',  name: '银翼', en: 'SILVERWING', role: '侦察 · 空中视野', desc: '猎鹰伴飞、全域扫描，用鹰眼把战场的每个角落都照亮。',       power: 71, c1: '#c2d1e0', c2: '#1c232e' },
+    { id: 'huixiang',name: '回响', en: 'ECHO',   role: '侦察 · 声波感知', desc: '听风辨位、全图声呐——脚步、枪声、心跳他都能听见。',           power: 64, c1: '#a78ae8', c2: '#201633' }
   ];
 
   function opIcon(o, size) {
@@ -6947,7 +6959,7 @@ DF.WujiaMusic.init();
       return `
       <div class="df-opcard${o.id === sel && !locked ? ' sel' : ''}${locked ? ' locked' : ''}" data-op="${o.id}" tabindex="0" role="button" aria-label="选择干员 ${o.name}">
         ${opIcon(o)}
-        <div class="df-opname">${o.name}${locked ? ' <span class="df-oplock">🔒</span>' : ''}</div>
+        <div class="df-opname">${o.name}${locked ? ' <span class="df-oplock">锁</span>' : ''}</div>
         <div class="df-oprole">${o.role} · ${o.en}</div>
         <div class="df-opdesc">${locked ? '商城购买「干员『' + o.name + '』档案 · ' + (o.price || 0) + ' 三角券 即可解锁出战。' : o.desc}</div>
         <div class="df-opbar"><span>战力</span><div class="bar"><i style="width:${o.power}%"></i></div><span>${o.power}</span></div>
@@ -7010,7 +7022,7 @@ DF.WujiaMusic.init();
         <div class="df-gunname">${g.name}</div>
         <svg viewBox="0 0 200 64" fill="#b8c2a4" aria-hidden="true">${g.svg}</svg>
         ${statRow('伤害', g.dmg)}${statRow('射程', g.rng)}${statRow('射速', g.rof)}
-        ${g.owned ? '<div class="df-own">✓ 已入库 · 可出勤</div>' : `<div class="df-lock">🔒 ${g.req}</div>`}
+        ${g.owned ? '<div class="df-own">✓ 已入库 · 可出勤</div>' : `<div class="df-lock">锁 ${g.req}</div>`}
       </div>`).join('');
   }
 
@@ -7917,7 +7929,7 @@ DF.WujiaMusic.init();
         <div>
           <div class="df-gs-nm" style="font-size:13px">${g.name}</div>
           <div class="gno">${g.no}</div>
-          <div class="gs ${isOwned(g.id) ? 'own' : 'lk'}">${isOwned(g.id) ? (modCount(g.id) ? `已改装 ×${modCount(g.id)}` : '原厂') : '🔒 未解锁 · ' + unlockProgress(g.id)}</div>
+          <div class="gs ${isOwned(g.id) ? 'own' : 'lk'}">${isOwned(g.id) ? (modCount(g.id) ? `已改装 ×${modCount(g.id)}` : '原厂') : '锁 未解锁 · ' + unlockProgress(g.id)}</div>
         </div>
       </div>`).join('');
   }
@@ -7950,7 +7962,7 @@ DF.WujiaMusic.init();
         <div>
           <div class="df-gs-nm">${g.name}</div>
           <div class="df-gs-no">${g.no}</div>
-          ${owned ? '<div class="df-gs-own">✓ 已入库 · 可出战</div>' : `<div class="df-gs-lk">🔒 ${g.req} · ${unlockProgress(selected)}</div>`}
+          ${owned ? '<div class="df-gs-own">✓ 已入库 · 可出战</div>' : `<div class="df-gs-lk">锁 ${g.req} · ${unlockProgress(selected)}</div>`}
         </div>
         <button class="df-gs-equip${owned ? '' : ' locked'}" id="gs-equip" ${owned ? '' : 'aria-disabled="true"'}>${owned ? (DF.gunsmithEquipped === selected ? '已 装 备' : '出 战 装 备') : '未 解 锁'}</button>
       </div>
@@ -8162,7 +8174,7 @@ DF.WujiaMusic.init();
     },
     /* ---------- 工程 ENGINEER ---------- */
     myang: {
-      cls: '工程', en: 'SHEPHERD·牧羊人', passive: { id: 'damp', name: '减振防御', desc: '受到的爆炸伤害 -65%' },
+      cls: '工程', en: 'WARDEN · 牧羊人', passive: { id: 'damp', name: '减振防御', desc: '受到的爆炸伤害 -65%' },
       abilities: [
         { key: 'Q', id: 'pulse', name: '声波脉冲', icon: '◉', cd: 8, desc: '定向声波：前方 7m 扇形内敌人晕眩 1.4 秒' },
         { key: 'E', id: 'jammer', name: '干扰装置', icon: '⌁', cd: 14, desc: '部署信号干扰区（半径 10m，5 秒）：敌人命中率大跌' },

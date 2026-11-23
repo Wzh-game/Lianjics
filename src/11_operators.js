@@ -103,7 +103,7 @@
     },
     /* ---------- 工程 ENGINEER ---------- */
     myang: {
-      cls: '工程', en: 'SHEPHERD·牧羊人', passive: { id: 'damp', name: '减振防御', desc: '受到的爆炸伤害 -65%' },
+      cls: '工程', en: 'WARDEN · 牧羊人', passive: { id: 'damp', name: '减振防御', desc: '受到的爆炸伤害 -65%' },
       abilities: [
         { key: 'Q', id: 'pulse', name: '声波脉冲', icon: '◉', cd: 8, desc: '定向声波：前方 7m 扇形内敌人晕眩 1.4 秒' },
         { key: 'E', id: 'jammer', name: '干扰装置', icon: '⌁', cd: 14, desc: '部署信号干扰区（半径 10m，5 秒）：敌人命中率大跌' },

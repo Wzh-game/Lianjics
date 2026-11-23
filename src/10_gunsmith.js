@@ -421,7 +421,7 @@
         <div>
           <div class="df-gs-nm" style="font-size:13px">${g.name}</div>
           <div class="gno">${g.no}</div>
-          <div class="gs ${isOwned(g.id) ? 'own' : 'lk'}">${isOwned(g.id) ? (modCount(g.id) ? `已改装 ×${modCount(g.id)}` : '原厂') : '🔒 未解锁 · ' + unlockProgress(g.id)}</div>
+          <div class="gs ${isOwned(g.id) ? 'own' : 'lk'}">${isOwned(g.id) ? (modCount(g.id) ? `已改装 ×${modCount(g.id)}` : '原厂') : '锁 未解锁 · ' + unlockProgress(g.id)}</div>
         </div>
       </div>`).join('');
   }
@@ -454,7 +454,7 @@
         <div>
           <div class="df-gs-nm">${g.name}</div>
           <div class="df-gs-no">${g.no}</div>
-          ${owned ? '<div class="df-gs-own">✓ 已入库 · 可出战</div>' : `<div class="df-gs-lk">🔒 ${g.req} · ${unlockProgress(selected)}</div>`}
+          ${owned ? '<div class="df-gs-own">✓ 已入库 · 可出战</div>' : `<div class="df-gs-lk">锁 ${g.req} · ${unlockProgress(selected)}</div>`}
         </div>
         <button class="df-gs-equip${owned ? '' : ' locked'}" id="gs-equip" ${owned ? '' : 'aria-disabled="true"'}>${owned ? (DF.gunsmithEquipped === selected ? '已 装 备' : '出 战 装 备') : '未 解 锁'}</button>
       </div>
