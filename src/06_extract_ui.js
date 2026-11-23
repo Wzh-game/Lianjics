@@ -321,7 +321,7 @@ DF.M.onLocalRaidDeath = function (attackerName) {
   if (!me) return;
   const lost = DF.bagValue(me);
   const safeKept = DF.safeValue(me);
-  DF.Profile.addDeath(me.kills);
+  DF.Profile.addDeath(me.kills, DF.mapId);
   // 保险箱价值仍然入库（撤离失败也保留）
   if (safeKept > 0) { DF.Profile.data.bank += safeKept; DF.Profile.save(); }
   DF.showRaidResult(false, {

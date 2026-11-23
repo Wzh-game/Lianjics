@@ -236,77 +236,52 @@ DF.createViewModel = function (camera) {
     tan: new T.MeshStandardMaterial({ color: 0x8a7f63, roughness: 0.85 }),
     glove: new T.MeshStandardMaterial({ color: 0x2b2f24, roughness: 0.95 }),
     glass: new T.MeshStandardMaterial({ color: 0x18313a, metalness: 0.9, roughness: 0.1 }),
-    dot: new T.MeshBasicMaterial({ color: 0xff3b2f })
+    dot: new T.MeshBasicMaterial({ color: 0xff3b2f }),
+    wood: new T.MeshStandardMaterial({ color: 0x74522f, roughness: 0.8 }),
+    bakelite: new T.MeshStandardMaterial({ color: 0x7d3f1e, roughness: 0.55 }),
+    ammoBox: new T.MeshStandardMaterial({ color: 0x565a35, roughness: 0.7, metalness: 0.2 }),
+    rubber: new T.MeshStandardMaterial({ color: 0x1c1e1c, roughness: 0.9 }),
+    scopeBody: new T.MeshStandardMaterial({ color: 0x2a2e30, roughness: 0.4, metalness: 0.7 })
   };
-  const add = (geo, mat, x, y, z) => {
+  const addPart = (geo, mat, x, y, z) => {
     const mesh = new T.Mesh(geo, mat);
     mesh.position.set(x, y, z);
     vm.add(mesh);
     return mesh;
   };
-  // 机匣
-  const recv = add(new T.BoxGeometry(0.075, 0.10, 0.40), M.body, 0, 0, -0.12);
-  // 上导轨
-  const rail = add(new T.BoxGeometry(0.055, 0.025, 0.52), M.body2, 0, 0.062, -0.18);
-  // 护木
-  const hand = add(new T.BoxGeometry(0.068, 0.078, 0.34), M.tan, 0, -0.002, -0.44);
-  // 散热孔
-  for (let i = 0; i < 5; i++) add(new T.BoxGeometry(0.072, 0.012, 0.022), M.body, 0, 0.012, -0.30 - i * 0.055);
-  // 枪管
-  const barrel = add(new T.CylinderGeometry(0.014, 0.014, 0.34, 10), M.body, 0, 0.012, -0.72);
-  barrel.rotation.x = Math.PI / 2;
-  // 消焰器
-  const mz = add(new T.CylinderGeometry(0.021, 0.024, 0.09, 10), M.body2, 0, 0.012, -0.90);
-  mz.rotation.x = Math.PI / 2;
-  // 弹匣
-  const mag = add(new T.BoxGeometry(0.05, 0.16, 0.075), M.body2, 0, -0.125, -0.10);
-  mag.rotation.x = -0.12;
-  // 握把
-  const grip = add(new T.BoxGeometry(0.05, 0.15, 0.07), M.body, 0, -0.12, 0.06);
-  grip.rotation.x = 0.28;
-  // 枪托
-  const stock = add(new T.BoxGeometry(0.05, 0.085, 0.24), M.body2, 0, -0.005, 0.20);
-  // 瞄具座
-  add(new T.BoxGeometry(0.05, 0.03, 0.10), M.body2, 0, 0.088, -0.06);
-  // 红点镜外壳（细环结构）
-  const scope = add(new T.TorusGeometry(0.030, 0.0065, 8, 18), M.body, 0, 0.128, -0.085);
-  const scope2 = add(new T.TorusGeometry(0.030, 0.0065, 8, 18), M.body2, 0, 0.128, -0.028);
-  const scopeBase = add(new T.BoxGeometry(0.026, 0.055, 0.09), M.body2, 0, 0.10, -0.056);
-  const lens = add(new T.CircleGeometry(0.029, 18), M.glass, 0, 0.128, -0.028);
-  lens.material = new T.MeshBasicMaterial({ color: 0x8fd0e0, transparent: true, opacity: 0.16 });
-  const redDot = add(new T.CircleGeometry(0.0032, 10), M.dot, 0, 0.128, -0.026);
-  // 手部
-  const handR = add(new T.BoxGeometry(0.095, 0.125, 0.14), M.glove, 0.005, -0.14, 0.055);
-  const armR = add(new T.BoxGeometry(0.072, 0.072, 0.24), M.tan, 0.022, -0.185, 0.20);
+  // ===== 手部 & 手臂（所有枪共用） =====
+  const handR = addPart(new T.BoxGeometry(0.095, 0.125, 0.14), M.glove, 0.005, -0.14, 0.055);
+  const armR = addPart(new T.BoxGeometry(0.072, 0.072, 0.24), M.tan, 0.022, -0.185, 0.20);
   armR.rotation.x = 0.5;
-  const handL = add(new T.BoxGeometry(0.10, 0.115, 0.155), M.glove, -0.015, -0.062, -0.42);
-  const armL = add(new T.BoxGeometry(0.070, 0.070, 0.28), M.tan, -0.062, -0.125, -0.26);
+  const handL = addPart(new T.BoxGeometry(0.10, 0.115, 0.155), M.glove, -0.015, -0.062, -0.42);
+  const armL = addPart(new T.BoxGeometry(0.070, 0.070, 0.28), M.tan, -0.062, -0.125, -0.26);
   armL.rotation.set(0.30, 0.26, 0);
-
-  // 枪口位置（局部）
+  // ===== 枪组（DF.syncViewModel 按当前武器+配件重建） =====
+  const gunRoot = new T.Group();
+  vm.add(gunRoot);
+  // ===== 枪口位置（随枪型/配件由 syncViewModel 更新） =====
   const muzzle = new T.Object3D();
   muzzle.position.set(0, 0.012, -0.95);
   vm.add(muzzle);
-
-  // 枪口火光
+  // ===== 枪口火光 =====
   const flashMat = new T.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
   const flash = new T.Mesh(new T.ConeGeometry(0.075, 0.24, 6), flashMat);
   flash.rotation.x = -Math.PI / 2;
   flash.position.set(0, 0.012, -1.02);
   vm.add(flash);
-  // 火光的十字片
   const flash2 = new T.Mesh(new T.PlaneGeometry(0.3, 0.18), flashMat);
   flash2.position.set(0, 0.012, -0.99);
   vm.add(flash2);
-
   const flashLight = new T.PointLight(0xffc070, 0, 14, 2);
   flashLight.position.set(0, 0.0, -1.0);
   vm.add(flashLight);
 
-  vm.userData = { muzzle, flash, flash2, flashLight, mag, redDot, scope, lens, barrel };
-  // ADS 时隐藏手与手臂，避免遮挡中心视野
-  vm.userData.adsHide = [handL, handR, armL, armR, mag, grip, stock, recv, rail];
-  vm.userData.adsKeep = [hand];
+  vm.userData = {
+    muzzle, flash, flash2, flashLight, gunRoot, mats: M,
+    mag: null, magBaseY: -0.125, redDot: null, flashDamp: 1
+  };
+  // ADS 时只隐藏手部（枪与配件保持可见）
+  vm.userData.adsHide = [handL, handR, armL, armR];
   // 基础位置（腰射）
   vm.scale.setScalar(0.62);
   const SC = 0.62;
@@ -318,6 +293,7 @@ DF.createViewModel = function (camera) {
 
   camera.add(vm);
   DF.viewModel = vm;
+  if (typeof DF.syncViewModel === 'function') DF.syncViewModel();
   return vm;
 };
 
@@ -409,11 +385,12 @@ DF.createEffects = function (scene) {
   FX.flash = function () {
     const vm = DF.viewModel;
     if (!vm) return;
-    vm.userData.flash.material.opacity = 1;
-    vm.userData.flash2.material.opacity = 0.9;
-    vm.userData.flashLight.intensity = 3.2;
+    const damp = vm.userData.flashDamp || 1;   // 消音器/一体套筒压低火光
+    vm.userData.flash.material.opacity = 1 * damp;
+    vm.userData.flash2.material.opacity = 0.9 * damp;
+    vm.userData.flashLight.intensity = 3.2 * damp;
     vm.userData.flash.rotation.z = Math.random() * 3;
-    vm.userData.flash.scale.setScalar(rnd(0.75, 1.25));
+    vm.userData.flash.scale.setScalar(rnd(0.75, 1.25) * damp);
     FX.muzzleT = 0.055;
   };
   FX.update = function (dt) {

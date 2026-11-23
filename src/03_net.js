@@ -575,7 +575,7 @@ Net._guestHandle = function (m) {
       if (p) { p.extracted = true; p.alive = false; }
       DF.pushKillfeed(`<b style="color:${m.color}">${escapeHtml(m.name)}</b> <span style="color:#7dd069">已从 ${escapeHtml(m.ex)} 撤离</span> <span style="color:#ffb347">+$${(m.v || 0).toLocaleString()}</span>`);
       if (m.id === DF.myId) {
-        DF.Profile.addExtraction(m.v || 0, (DF.players.get(DF.myId) || {}).kills || 0);
+        DF.Profile.addExtraction(m.v || 0, (DF.players.get(DF.myId) || {}).kills || 0, DF.mapId);
         DF.Audio.extract && DF.Audio.extract();
         DF.showRaidResult(true, {
           value: m.v || 0, exName: m.ex,

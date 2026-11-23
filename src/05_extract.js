@@ -53,7 +53,7 @@ const CONTAINER_TYPES = {
    资产档案（持久化）
    ============================================================ */
 DF.Profile = {
-  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0 },
+  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0 },
   load() {
     try {
       const raw = localStorage.getItem('df_profile');
@@ -62,16 +62,42 @@ DF.Profile = {
     return this.data;
   },
   save() { try { localStorage.setItem('df_profile', JSON.stringify(this.data)); } catch (e) { } },
-  addExtraction(gained, kills) {
+  addExtraction(gained, kills, mapId) {
     const d = this.data;
     d.raids++; d.extracted++; d.bank += gained; d.last = gained; d.kills += (kills || 0);
+    if (mapId === 'frontier') { d.frontierRaids = (d.frontierRaids | 0) + 1; d.frontierExtracted = (d.frontierExtracted | 0) + 1; }
     if (gained > d.best) d.best = gained;
     this.save();
   },
-  addDeath(kills) {
+  addDeath(kills, mapId) {
     const d = this.data;
     d.raids++; d.died++; d.last = 0; d.kills += (kills || 0);
+    if (mapId === 'frontier') d.frontierRaids = (d.frontierRaids | 0) + 1;
     this.save();
+  },
+  addSearch() {
+    const d = this.data;
+    d.searched = (d.searched | 0) + 1;
+    this.save();
+  },
+  addDelta(n) {
+    const d = this.data;
+    d.delta = (d.delta | 0) + (n | 0);
+    this.save();
+  },
+  // 行动经验与等级：全部由真实行动数据推导（不存新字段）
+  xp() {
+    const d = this.data;
+    return (d.raids | 0) * 15 + (d.extracted | 0) * 120 + (d.kills | 0) * 10 + (d.searched | 0) * 3;
+  },
+  level() {
+    const XP_PER = 150;
+    const xp = this.xp();
+    return Math.min(99, 1 + Math.floor(xp / XP_PER));
+  },
+  levelProgress() {
+    const XP_PER = 150;
+    return (this.xp() % XP_PER) / XP_PER;
   }
 };
 
@@ -429,7 +455,7 @@ DF.onPlayerExtracted = function (p, ex, value) {
     t: 'ext', id: p.id, name: p.name, color: p.color, ex: ex.name, v: value
   });
   if (p.isLocal) {
-    DF.Profile.addExtraction(value, p.kills);
+    DF.Profile.addExtraction(value, p.kills, DF.mapId);
     DF.M.onLocalExtracted && DF.M.onLocalExtracted(p, ex, value);
   }
   // 移出战场（保留数据用于结算）
@@ -476,6 +502,7 @@ DF.startSearch = function (c) {
 DF.completeSearch = function (c) {
   const me = DF.players.get(DF.myId);
   if (!me || !c) return;
+  if (DF.Profile && DF.Profile.addSearch) DF.Profile.addSearch();
   c.searched = true;
   c.searchedBy = me.id;
   c.mark.visible = false;

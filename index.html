@@ -649,24 +649,24 @@ body.touchmode #joystickHint{display:none}
       <div class="df-pinfo">
         <div class="df-prow">
           <input id="name-input" class="df-nick" maxlength="12" spellcheck="false" autocomplete="off" aria-label="你的呼号（昵称）">
-          <span class="df-lvl">LV.24</span>
+          <span class="df-lvl" id="player-lvl">LV.1</span>
         </div>
-        <div class="df-xpbar"><i style="width:68%"></i></div>
+        <div class="df-xpbar" title="行动经验"><i id="player-xpbar" style="width:0%"></i></div>
         <div class="df-psub">特种部队 · 搜打撤专家</div>
       </div>
     </div>
     <div class="df-topright">
       <div class="df-cur" title="哈弗币 · 搜打撤通用货币">
         <svg width="17" height="17" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="#e8c56a" stroke="#8a6f2a" stroke-width="1.4"/><text x="10" y="13.6" text-anchor="middle" font-size="10" font-weight="900" fill="#5d4712">H</text></svg>
-        <b>128,600</b><span>哈弗币</span>
+        <b id="bank-hafu">0</b><span>哈弗币</span>
         <button class="df-plus" data-toast="商城即将开放，敬请期待" aria-label="获取哈弗币">+</button>
       </div>
       <div class="df-cur" title="三角券 · 通行证/干员货币">
         <svg width="17" height="17" viewBox="0 0 20 20"><path d="M3 6h14l-2 4 2 4H3l2-4-2-4Z" fill="#9fd0ff" stroke="#3a5a72" stroke-width="1.3" stroke-linejoin="round"/><text x="10" y="13" text-anchor="middle" font-size="8" font-weight="900" fill="#17344a">Δ</text></svg>
-        <b>2,380</b><span>三角券</span>
+        <b id="bank-delta">0</b><span>三角券</span>
         <button class="df-plus" data-toast="商城即将开放，敬请期待" aria-label="获取三角券">+</button>
       </div>
-      <button class="df-iconbtn" data-toast="暂无新邮件" aria-label="邮件">✉<span class="df-dot"></span></button>
+      <button class="df-iconbtn" data-toast="暂无新邮件" aria-label="邮件">✉</button>
       <button class="df-iconbtn" data-toast="设置面板即将开放" aria-label="设置">⚙</button>
     </div>
   </header>
@@ -692,7 +692,7 @@ body.touchmode #joystickHint{display:none}
     <button class="df-rail-btn" data-tab="mission" aria-label="任务">
       <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><rect x="12" y="8" width="24" height="33"/><path d="M19 8V5h10v3M18 20h12M18 28h12M18 36h7"/></svg>
       <span>任务</span>
-      <i class="df-badge">3</i>
+      <i class="df-badge" id="mission-badge" style="display:none">0</i>
     </button>
     <button class="df-rail-btn" data-tab="shop" aria-label="商城">
       <svg viewBox="0 0 48 48" fill="none" stroke-width="2.4" stroke-linejoin="round"><path d="M10 16h28l-3 24H13L10 16Z"/><circle cx="20" cy="46" r="2.2"/><circle cx="32" cy="46" r="2.2"/><path d="M17 16a7 7 0 0 1 14 0"/></svg>
@@ -735,7 +735,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.6.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.7.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -935,7 +935,7 @@ body.touchmode #joystickHint{display:none}
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.6.0';
+DF.VERSION = '1.7.0';
 
 // 无 user gesture 时 requestPointerLock 会同步抛错或返回 rejected Promise（客人收到 start 直接进场即触发）。
 // 统一静默吞掉，锁定交给玩家点按画布时再做。
@@ -2363,77 +2363,52 @@ DF.createViewModel = function (camera) {
     tan: new T.MeshStandardMaterial({ color: 0x8a7f63, roughness: 0.85 }),
     glove: new T.MeshStandardMaterial({ color: 0x2b2f24, roughness: 0.95 }),
     glass: new T.MeshStandardMaterial({ color: 0x18313a, metalness: 0.9, roughness: 0.1 }),
-    dot: new T.MeshBasicMaterial({ color: 0xff3b2f })
+    dot: new T.MeshBasicMaterial({ color: 0xff3b2f }),
+    wood: new T.MeshStandardMaterial({ color: 0x74522f, roughness: 0.8 }),
+    bakelite: new T.MeshStandardMaterial({ color: 0x7d3f1e, roughness: 0.55 }),
+    ammoBox: new T.MeshStandardMaterial({ color: 0x565a35, roughness: 0.7, metalness: 0.2 }),
+    rubber: new T.MeshStandardMaterial({ color: 0x1c1e1c, roughness: 0.9 }),
+    scopeBody: new T.MeshStandardMaterial({ color: 0x2a2e30, roughness: 0.4, metalness: 0.7 })
   };
-  const add = (geo, mat, x, y, z) => {
+  const addPart = (geo, mat, x, y, z) => {
     const mesh = new T.Mesh(geo, mat);
     mesh.position.set(x, y, z);
     vm.add(mesh);
     return mesh;
   };
-  // 机匣
-  const recv = add(new T.BoxGeometry(0.075, 0.10, 0.40), M.body, 0, 0, -0.12);
-  // 上导轨
-  const rail = add(new T.BoxGeometry(0.055, 0.025, 0.52), M.body2, 0, 0.062, -0.18);
-  // 护木
-  const hand = add(new T.BoxGeometry(0.068, 0.078, 0.34), M.tan, 0, -0.002, -0.44);
-  // 散热孔
-  for (let i = 0; i < 5; i++) add(new T.BoxGeometry(0.072, 0.012, 0.022), M.body, 0, 0.012, -0.30 - i * 0.055);
-  // 枪管
-  const barrel = add(new T.CylinderGeometry(0.014, 0.014, 0.34, 10), M.body, 0, 0.012, -0.72);
-  barrel.rotation.x = Math.PI / 2;
-  // 消焰器
-  const mz = add(new T.CylinderGeometry(0.021, 0.024, 0.09, 10), M.body2, 0, 0.012, -0.90);
-  mz.rotation.x = Math.PI / 2;
-  // 弹匣
-  const mag = add(new T.BoxGeometry(0.05, 0.16, 0.075), M.body2, 0, -0.125, -0.10);
-  mag.rotation.x = -0.12;
-  // 握把
-  const grip = add(new T.BoxGeometry(0.05, 0.15, 0.07), M.body, 0, -0.12, 0.06);
-  grip.rotation.x = 0.28;
-  // 枪托
-  const stock = add(new T.BoxGeometry(0.05, 0.085, 0.24), M.body2, 0, -0.005, 0.20);
-  // 瞄具座
-  add(new T.BoxGeometry(0.05, 0.03, 0.10), M.body2, 0, 0.088, -0.06);
-  // 红点镜外壳（细环结构）
-  const scope = add(new T.TorusGeometry(0.030, 0.0065, 8, 18), M.body, 0, 0.128, -0.085);
-  const scope2 = add(new T.TorusGeometry(0.030, 0.0065, 8, 18), M.body2, 0, 0.128, -0.028);
-  const scopeBase = add(new T.BoxGeometry(0.026, 0.055, 0.09), M.body2, 0, 0.10, -0.056);
-  const lens = add(new T.CircleGeometry(0.029, 18), M.glass, 0, 0.128, -0.028);
-  lens.material = new T.MeshBasicMaterial({ color: 0x8fd0e0, transparent: true, opacity: 0.16 });
-  const redDot = add(new T.CircleGeometry(0.0032, 10), M.dot, 0, 0.128, -0.026);
-  // 手部
-  const handR = add(new T.BoxGeometry(0.095, 0.125, 0.14), M.glove, 0.005, -0.14, 0.055);
-  const armR = add(new T.BoxGeometry(0.072, 0.072, 0.24), M.tan, 0.022, -0.185, 0.20);
+  // ===== 手部 & 手臂（所有枪共用） =====
+  const handR = addPart(new T.BoxGeometry(0.095, 0.125, 0.14), M.glove, 0.005, -0.14, 0.055);
+  const armR = addPart(new T.BoxGeometry(0.072, 0.072, 0.24), M.tan, 0.022, -0.185, 0.20);
   armR.rotation.x = 0.5;
-  const handL = add(new T.BoxGeometry(0.10, 0.115, 0.155), M.glove, -0.015, -0.062, -0.42);
-  const armL = add(new T.BoxGeometry(0.070, 0.070, 0.28), M.tan, -0.062, -0.125, -0.26);
+  const handL = addPart(new T.BoxGeometry(0.10, 0.115, 0.155), M.glove, -0.015, -0.062, -0.42);
+  const armL = addPart(new T.BoxGeometry(0.070, 0.070, 0.28), M.tan, -0.062, -0.125, -0.26);
   armL.rotation.set(0.30, 0.26, 0);
-
-  // 枪口位置（局部）
+  // ===== 枪组（DF.syncViewModel 按当前武器+配件重建） =====
+  const gunRoot = new T.Group();
+  vm.add(gunRoot);
+  // ===== 枪口位置（随枪型/配件由 syncViewModel 更新） =====
   const muzzle = new T.Object3D();
   muzzle.position.set(0, 0.012, -0.95);
   vm.add(muzzle);
-
-  // 枪口火光
+  // ===== 枪口火光 =====
   const flashMat = new T.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
   const flash = new T.Mesh(new T.ConeGeometry(0.075, 0.24, 6), flashMat);
   flash.rotation.x = -Math.PI / 2;
   flash.position.set(0, 0.012, -1.02);
   vm.add(flash);
-  // 火光的十字片
   const flash2 = new T.Mesh(new T.PlaneGeometry(0.3, 0.18), flashMat);
   flash2.position.set(0, 0.012, -0.99);
   vm.add(flash2);
-
   const flashLight = new T.PointLight(0xffc070, 0, 14, 2);
   flashLight.position.set(0, 0.0, -1.0);
   vm.add(flashLight);
 
-  vm.userData = { muzzle, flash, flash2, flashLight, mag, redDot, scope, lens, barrel };
-  // ADS 时隐藏手与手臂，避免遮挡中心视野
-  vm.userData.adsHide = [handL, handR, armL, armR, mag, grip, stock, recv, rail];
-  vm.userData.adsKeep = [hand];
+  vm.userData = {
+    muzzle, flash, flash2, flashLight, gunRoot, mats: M,
+    mag: null, magBaseY: -0.125, redDot: null, flashDamp: 1
+  };
+  // ADS 时只隐藏手部（枪与配件保持可见）
+  vm.userData.adsHide = [handL, handR, armL, armR];
   // 基础位置（腰射）
   vm.scale.setScalar(0.62);
   const SC = 0.62;
@@ -2445,6 +2420,7 @@ DF.createViewModel = function (camera) {
 
   camera.add(vm);
   DF.viewModel = vm;
+  if (typeof DF.syncViewModel === 'function') DF.syncViewModel();
   return vm;
 };
 
@@ -2536,11 +2512,12 @@ DF.createEffects = function (scene) {
   FX.flash = function () {
     const vm = DF.viewModel;
     if (!vm) return;
-    vm.userData.flash.material.opacity = 1;
-    vm.userData.flash2.material.opacity = 0.9;
-    vm.userData.flashLight.intensity = 3.2;
+    const damp = vm.userData.flashDamp || 1;   // 消音器/一体套筒压低火光
+    vm.userData.flash.material.opacity = 1 * damp;
+    vm.userData.flash2.material.opacity = 0.9 * damp;
+    vm.userData.flashLight.intensity = 3.2 * damp;
     vm.userData.flash.rotation.z = Math.random() * 3;
-    vm.userData.flash.scale.setScalar(rnd(0.75, 1.25));
+    vm.userData.flash.scale.setScalar(rnd(0.75, 1.25) * damp);
     FX.muzzleT = 0.055;
   };
   FX.update = function (dt) {
@@ -3509,7 +3486,7 @@ Net._guestHandle = function (m) {
       if (p) { p.extracted = true; p.alive = false; }
       DF.pushKillfeed(`<b style="color:${m.color}">${escapeHtml(m.name)}</b> <span style="color:#7dd069">已从 ${escapeHtml(m.ex)} 撤离</span> <span style="color:#ffb347">+$${(m.v || 0).toLocaleString()}</span>`);
       if (m.id === DF.myId) {
-        DF.Profile.addExtraction(m.v || 0, (DF.players.get(DF.myId) || {}).kills || 0);
+        DF.Profile.addExtraction(m.v || 0, (DF.players.get(DF.myId) || {}).kills || 0, DF.mapId);
         DF.Audio.extract && DF.Audio.extract();
         DF.showRaidResult(true, {
           value: m.v || 0, exName: m.ex,
@@ -3737,7 +3714,15 @@ DF.Audio = {
     src.connect(f); f.connect(g); g.connect(ctx.destination);
     src.start();
   },
-  shot() { this.noise(0.13, 0.32, 2200, 'lowpass'); this.thump(90, 0.15, 0.12); },
+  shot() {
+    const VOICE = { m4a1: [0.13, 0.32, 2200, 90, 0.15, 0.12], ak74: [0.145, 0.36, 1650, 80, 0.17, 0.13],
+      mp5: [0.095, 0.27, 2600, 125, 0.12, 0.09], awm: [0.24, 0.44, 1250, 55, 0.24, 0.16],
+      m249: [0.12, 0.33, 2000, 95, 0.16, 0.12], vss: [0.10, 0.17, 750, 65, 0.10, 0.09] };
+    let g = 'm4a1';
+    try { const me = DF.players && DF.players.get && DF.players.get(DF.myId); if (me && me.weapon && me.weapon.gun) g = me.weapon.gun; } catch (e) { }
+    const v = VOICE[g] || VOICE.m4a1;
+    this.noise(v[0], v[1], v[2], 'lowpass'); this.thump(v[3], v[4], v[5]);
+  },
   enemyShot() { this.noise(0.10, 0.10, 900, 'lowpass'); },
   thump(freq, vol, dur) {
     if (!this.ctx || this.muted) return;
@@ -4866,7 +4851,7 @@ DF.M.gameEnd = function (winnerId, reason) {
       I_unlock();
       const lost = DF.bagValue(me);
       const safeKept = DF.safeValue(me);
-      DF.Profile.addDeath(me.kills);
+      DF.Profile.addDeath(me.kills, DF.mapId);
       if (safeKept > 0) { DF.Profile.data.bank += safeKept; DF.Profile.save(); }
       DF.showRaidResult(false, {
         killer: reason === 'time' ? '撤离超时' : '撤离失败',
@@ -5446,13 +5431,14 @@ DF.updateLocalPlayer = function (dt) {
     vm.rotation.y = me.ads ? 0 : Math.sin(DF.bobT) * 0.008 * bobAmt;
     // 装弹动画
     if (me.reloading) {
-      const prog = 1 - clamp((me.reloadEnd - DF.time) / CFG.reloadTime, 0, 1);
+      const prog = 1 - clamp((me.reloadEnd - DF.time) / (DF.effReload ? DF.effReload(me) : CFG.reloadTime), 0, 1);
       const s = Math.sin(prog * Math.PI);
       vm.rotation.x += s * 0.55;
       vm.position.y -= s * 0.14;
-      vm.userData.mag.position.y = -0.14 - s * 0.18;
+      const baseY = vm.userData.magBaseY != null ? vm.userData.magBaseY : -0.14;
+      vm.userData.mag.position.y = baseY - s * 0.18;
     } else {
-      vm.userData.mag.position.y = -0.14;
+      vm.userData.mag.position.y = vm.userData.magBaseY != null ? vm.userData.magBaseY : -0.14;
     }
     // 准镜透明度
     vm.userData.redDot.material.opacity = 1;
@@ -5699,7 +5685,7 @@ const CONTAINER_TYPES = {
    资产档案（持久化）
    ============================================================ */
 DF.Profile = {
-  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0 },
+  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0 },
   load() {
     try {
       const raw = localStorage.getItem('df_profile');
@@ -5708,16 +5694,42 @@ DF.Profile = {
     return this.data;
   },
   save() { try { localStorage.setItem('df_profile', JSON.stringify(this.data)); } catch (e) { } },
-  addExtraction(gained, kills) {
+  addExtraction(gained, kills, mapId) {
     const d = this.data;
     d.raids++; d.extracted++; d.bank += gained; d.last = gained; d.kills += (kills || 0);
+    if (mapId === 'frontier') { d.frontierRaids = (d.frontierRaids | 0) + 1; d.frontierExtracted = (d.frontierExtracted | 0) + 1; }
     if (gained > d.best) d.best = gained;
     this.save();
   },
-  addDeath(kills) {
+  addDeath(kills, mapId) {
     const d = this.data;
     d.raids++; d.died++; d.last = 0; d.kills += (kills || 0);
+    if (mapId === 'frontier') d.frontierRaids = (d.frontierRaids | 0) + 1;
     this.save();
+  },
+  addSearch() {
+    const d = this.data;
+    d.searched = (d.searched | 0) + 1;
+    this.save();
+  },
+  addDelta(n) {
+    const d = this.data;
+    d.delta = (d.delta | 0) + (n | 0);
+    this.save();
+  },
+  // 行动经验与等级：全部由真实行动数据推导（不存新字段）
+  xp() {
+    const d = this.data;
+    return (d.raids | 0) * 15 + (d.extracted | 0) * 120 + (d.kills | 0) * 10 + (d.searched | 0) * 3;
+  },
+  level() {
+    const XP_PER = 150;
+    const xp = this.xp();
+    return Math.min(99, 1 + Math.floor(xp / XP_PER));
+  },
+  levelProgress() {
+    const XP_PER = 150;
+    return (this.xp() % XP_PER) / XP_PER;
   }
 };
 
@@ -6075,7 +6087,7 @@ DF.onPlayerExtracted = function (p, ex, value) {
     t: 'ext', id: p.id, name: p.name, color: p.color, ex: ex.name, v: value
   });
   if (p.isLocal) {
-    DF.Profile.addExtraction(value, p.kills);
+    DF.Profile.addExtraction(value, p.kills, DF.mapId);
     DF.M.onLocalExtracted && DF.M.onLocalExtracted(p, ex, value);
   }
   // 移出战场（保留数据用于结算）
@@ -6122,6 +6134,7 @@ DF.startSearch = function (c) {
 DF.completeSearch = function (c) {
   const me = DF.players.get(DF.myId);
   if (!me || !c) return;
+  if (DF.Profile && DF.Profile.addSearch) DF.Profile.addSearch();
   c.searched = true;
   c.searchedBy = me.id;
   c.mark.visible = false;
@@ -6519,7 +6532,7 @@ DF.M.onLocalRaidDeath = function (attackerName) {
   if (!me) return;
   const lost = DF.bagValue(me);
   const safeKept = DF.safeValue(me);
-  DF.Profile.addDeath(me.kills);
+  DF.Profile.addDeath(me.kills, DF.mapId);
   // 保险箱价值仍然入库（撤离失败也保留）
   if (safeKept > 0) { DF.Profile.data.bank += safeKept; DF.Profile.save(); }
   DF.showRaidResult(false, {
@@ -6750,11 +6763,11 @@ DF.WujiaMusic.init();
       svg: '<path d="M14 24h96v13H34l-6 12H14l6-12z"/><rect x="110" y="27" width="56" height="6"/><rect x="166" y="26" width="24" height="8"/><path d="M52 37l-4 18h9l5-18z"/><rect x="8" y="22" width="10" height="18"/><rect x="46" y="18" width="14" height="6"/>' },
     { id: 'mp5', name: 'MP5 冲锋枪', no: 'SMG · 9mm', dmg: 30, rng: 34, rof: 88, owned: true,
       svg: '<rect x="34" y="26" width="66" height="11" rx="2"/><rect x="100" y="29" width="46" height="5"/><rect x="146" y="28" width="14" height="7"/><rect x="52" y="37" width="9" height="17" transform="rotate(6 56 37)"/><rect x="66" y="37" width="8" height="10"/><path d="M30 26l-8 4v8l10 2z"/><rect x="62" y="20" width="12" height="6"/>' },
-    { id: 'awm', name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '干员等级 30 解锁',
+    { id: 'awm', name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '累计击杀 80 解锁',
       svg: '<rect x="8" y="25" width="118" height="11" rx="1"/><rect x="126" y="28" width="52" height="5"/><rect x="178" y="26" width="16" height="8"/><rect x="40" y="36" width="9" height="14" transform="rotate(10 44 36)"/><rect x="64" y="36" width="7" height="10"/><path d="M4 28h10v13H4z"/><rect x="34" y="18" width="26" height="6"/><circle cx="34" cy="21" r="3.4"/><circle cx="60" cy="21" r="3.4"/><path d="M68 36l6 12h6l-4-12z"/>' },
     { id: 'm249', name: 'M249 轻机枪', no: 'LMG · 5.56mm', dmg: 40, rng: 60, rof: 80, owned: false, req: '累计击杀 150 解锁',
       svg: '<rect x="16" y="25" width="104" height="13" rx="1.5"/><rect x="120" y="28" width="52" height="6"/><rect x="172" y="27" width="16" height="8"/><rect x="46" y="38" width="8" height="12"/><path d="M64 38h10l4 16H60z"/><rect x="10" y="23" width="12" height="17"/><rect x="30" y="38" width="20" height="8" rx="4"/><rect x="58" y="19" width="18" height="6"/>' },
-    { id: 'vss', name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '完成赛季任务「无声猎手」解锁',
+    { id: 'vss', name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '累计从吴家村成功撤离 3 次解锁',
       svg: '<rect x="22" y="26" width="86" height="11" rx="2"/><rect x="108" y="28" width="40" height="6"/><rect x="148" y="27" width="26" height="8" rx="3"/><rect x="50" y="37" width="8" height="15" transform="rotate(8 54 37)"/><rect x="16" y="24" width="10" height="16"/><rect x="58" y="20" width="10" height="6"/><path d="M70 37l5 11h5l-3-11z"/>' }
   ];
 
@@ -6777,35 +6790,79 @@ DF.WujiaMusic.init();
 
   /* ---------- 任务 ---------- */
   const MISSIONS = [
-    { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', cur: 2, max: 3, award: '5,000 哈弗币' },
-    { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', cur: 17, max: 25, award: '3,000 哈弗币' },
-    { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', cur: 40, max: 40, award: '2,000 哈弗币' },
-    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', cur: 1, max: 1, award: '1,000 哈弗币 + 头像框「吴家村守望者」' }
+    { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', max: 3, cur: d => d.extracted | 0, award: '5,000 哈弗币 + 20 三角券', hafu: 5000, delta: 20 },
+    { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', max: 25, cur: d => d.kills | 0, award: '3,000 哈弗币 + 10 三角券', hafu: 3000, delta: 10 },
+    { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', max: 40, cur: d => d.searched | 0, award: '2,000 哈弗币 + 5 三角券', hafu: 2000, delta: 5 },
+    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30 }
   ];
+
+  const CLAIMED_KEY = 'df_missions_claimed';
+  function loadClaimed() { try { const a = JSON.parse(localStorage.getItem(CLAIMED_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function saveClaimed(a) { try { localStorage.setItem(CLAIMED_KEY, JSON.stringify(a)); } catch (e) { } }
+  /* ---------- 顶栏：等级 / 经验 / 双货币 —— 全部来自 DF.Profile ---------- */
+  function renderTopBar() {
+    const p = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile : null;
+    if (!p) return;
+    const d = p.data;
+    const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+    setText('bank-hafu', (d.bank | 0).toLocaleString());
+    setText('bank-delta', (d.delta | 0).toLocaleString());
+    setText('player-lvl', 'LV.' + p.level());
+    const bar = $('player-xpbar');
+    if (bar) bar.style.width = Math.round(p.levelProgress() * 100) + '%';
+  }
+  DF.renderTopBar = renderTopBar;
+  function refreshMissionBadge() {
+    const badge = $('mission-badge');
+    if (!badge) return;
+    const d = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile.data : {};
+    const claimed = loadClaimed();
+    const n = MISSIONS.filter((m, i) => !claimed.includes(i) && m.cur(d) >= m.max).length;
+    badge.textContent = String(n);
+    badge.style.display = n > 0 ? '' : 'none';
+  }
 
   function renderMissions() {
     const list = $('mission-list');
     if (!list) return;
+    const prof = (typeof DF !== 'undefined' && DF.Profile && DF.Profile.data) ? DF.Profile.data : {};
+    const claimed = loadClaimed();
     list.innerHTML = MISSIONS.map((m, i) => {
-      const done = m.cur >= m.max;
-      const pct = Math.min(100, Math.round(m.cur / m.max * 100));
+      const cur = m.cur(prof);
+      const done = cur >= m.max;
+      const isClaimed = claimed.includes(i);
+      const pct = Math.min(100, Math.round(cur / m.max * 100));
       return `<div class="df-mission">
         <div class="df-micon">${m.icon}</div>
         <div class="df-minfo">
           <div class="df-mname">${m.name}</div>
           <div class="df-mdesc">${m.desc}</div>
-          <div class="df-mbar"><div class="bar"><i style="width:${pct}%"></i></div><span>${m.cur}/${m.max}</span></div>
+          <div class="df-mbar"><div class="bar"><i style="width:${pct}%"></i></div><span>${Math.min(cur, m.max)}/${m.max}</span></div>
         </div>
-        <button class="df-mclaim" data-idx="${i}" ${done ? '' : 'disabled'}>${done ? '领取' : '未完成'}</button>
+        <button class="df-mclaim" data-idx="${i}" ${done && !isClaimed ? '' : 'disabled'}>${isClaimed ? '已领取' : (done ? '领取' : '未完成')}</button>
       </div>`;
     }).join('');
+    refreshMissionBadge();
     list.addEventListener('click', e => {
       const btn = e.target.closest('.df-mclaim');
       if (!btn || btn.disabled) return;
-      const m = MISSIONS[Number(btn.getAttribute('data-idx'))];
+      const idx = Number(btn.getAttribute('data-idx'));
+      const m = MISSIONS[idx];
+      // 真实入账：哈弗币 + 三角券 计入档案资产并持久化
+      if (typeof DF !== 'undefined' && DF.Profile && DF.Profile.data) {
+        DF.Profile.data.bank += (m.hafu | 0);
+        DF.Profile.data.delta = (DF.Profile.data.delta | 0) + (m.delta | 0);
+        DF.Profile.save();
+        if (DF.renderProfile) DF.renderProfile();
+        renderTopBar();
+      }
+      const claimed = loadClaimed();
+      if (!claimed.includes(idx)) claimed.push(idx);
+      saveClaimed(claimed);
       btn.disabled = true;
       btn.textContent = '已领取';
-      toast(`任务「${m.name}」奖励已发放：${m.award}`);
+      refreshMissionBadge();
+      toast(`任务「${m.name}」奖励已发放：+$${(m.hafu | 0).toLocaleString()} 哈弗币 · +${m.delta | 0} 三角券`);
     });
   }
 
@@ -6850,6 +6907,7 @@ DF.WujiaMusic.init();
     /* 枪械库改由 10_gunsmith.js 渲染 */
     renderMissions();
     renderShop();
+    renderTopBar();
     // data-toast 占位按钮
     document.addEventListener('click', e => {
       const t = e.target.closest('[data-toast]');
@@ -6872,6 +6930,8 @@ DF.WujiaMusic.init();
         const r = _quit.apply(this, arguments);
         switchTab('lobby');
         if (typeof DF.renderProfile === 'function') DF.renderProfile();
+        renderMissions();
+        renderTopBar();
         return r;
       };
     }
@@ -7190,7 +7250,19 @@ DF.WujiaMusic.init();
     m249: { short: 'M249', dmg: 0.95, spread: 1.25, recoil: 1.20, mag: 100, reload: 4.60 },
     vss:  { short: 'VSS',  dmg: 1.55, spread: 0.75, recoil: 0.90, mag: 10,  reload: 2.80 }
   };
-  const OWNED = { m4a1: true, ak74: true, mp5: true };
+  const BASE_OWNED = { m4a1: true, ak74: true, mp5: true };
+  /* 未入库枪的解锁条件：读取真实档案（DF.Profile），与大厅展示一致 */
+  const UNLOCK = {
+    awm:  { ok: d => (d.kills | 0) >= 80,            label: '累计击杀 80 解锁' },
+    m249: { ok: d => (d.kills | 0) >= 150,           label: '累计击杀 150 解锁' },
+    vss:  { ok: d => (d.frontierExtracted | 0) >= 3, label: '累计从吴家村成功撤离 3 次解锁' }
+  };
+  /* 枪械工坊在解析期即做出战枪校验，早于 DF.init 的 Profile.load()；
+     这里主动 load 一次（幂等），保证解锁判断基于真实档案 */
+  if (typeof DF !== 'undefined' && DF.Profile && DF.Profile.load) { try { DF.Profile.load(); } catch (e) { } }
+  const profileData = () => (typeof DF !== 'undefined' && DF.Profile && DF.Profile.data) ? DF.Profile.data : {};
+  const isGunUnlocked = id => !!BASE_OWNED[id] || (UNLOCK[id] ? !!UNLOCK[id].ok(profileData()) : false);
+  DF.isGunUnlocked = isGunUnlocked;
 
   /* ---------- 配件表（mod 均为累计加减，正值越大该属性越「强」） ---------- */
   const SLOTS = [
@@ -7248,7 +7320,8 @@ DF.WujiaMusic.init();
     } catch (e) { return Object.fromEntries(Object.keys(BASE).map(id => [id, [0, 0, 0, 0, 0]])); }
   }
   function loadEquipped() {
-    try { const g = localStorage.getItem('df_gm_equipped'); return BASE[g] ? g : 'm4a1'; } catch (e) { return 'm4a1'; }
+    // 本地存档可被手动篡改：未入库的枪一律回落 M4A1（与大厅出战校验一致）
+    try { const g = localStorage.getItem('df_gm_equipped'); return (BASE[g] && isGunUnlocked(g)) ? g : 'm4a1'; } catch (e) { return 'm4a1'; }
   }
   const persist = () => {
     try {
@@ -7297,6 +7370,184 @@ DF.WujiaMusic.init();
     moveSpread: DF.effMoveSpread(p), recoil: DF.effRecoil(p)
   });
 
+
+  /* ============================================================
+     第一人称枪械模型 · 六枪可切换 · 五槽配件可视化
+     与 createViewModel 共用一套局部坐标（-z 向前）；
+     DF.syncViewModel() 按「当前出战枪 + 配件」重建枪组
+     ============================================================ */
+  const GUN_SPECS = {
+    m4a1: { receiver: [0.075, 0.10, 0.40], receiverZ: -0.12, rail: 0.52, railZ: -0.18,
+      hand: [0.068, 0.078, 0.34], handZ: -0.44, handMat: 'tan', vents: 5,
+      barrelR: 0.014, barrelLen: 0.34, barrelZ: -0.72, tip: -0.89,
+      mag: [0.05, 0.16, 0.075], magY: -0.125, magRot: -0.12, magMat: 'body2',
+      stock: [0.05, 0.085, 0.24], stockMat: 'body2', sight: 'reflex', fgZ: -0.36 },
+    ak74: { receiver: [0.078, 0.105, 0.42], receiverZ: -0.12, rail: 0.30, railZ: -0.14,
+      hand: [0.07, 0.08, 0.30], handZ: -0.42, handMat: 'wood', vents: 4,
+      barrelR: 0.014, barrelLen: 0.38, barrelZ: -0.73, tip: -0.92,
+      mag: [0.052, 0.20, 0.08], magY: -0.14, magRot: -0.34, magMat: 'bakelite',
+      stock: [0.052, 0.088, 0.26], stockMat: 'wood', sight: 'iron', fgZ: -0.36,
+      defaultMuzzle: 'slant' },
+    mp5: { receiver: [0.072, 0.098, 0.36], receiverZ: -0.11, rail: 0.30, railZ: -0.13,
+      hand: [0.066, 0.075, 0.24], handZ: -0.38, handMat: 'body2', vents: 3,
+      barrelR: 0.013, barrelLen: 0.20, barrelZ: -0.55, tip: -0.65,
+      mag: [0.048, 0.17, 0.075], magY: -0.13, magRot: -0.10, magMat: 'body2',
+      stock: [0.045, 0.07, 0.17], stockMat: 'body2', sight: 'reflex', fgZ: -0.33 },
+    awm: { receiver: [0.075, 0.105, 0.46], receiverZ: -0.13, rail: 0.40, railZ: -0.15,
+      hand: [0.066, 0.078, 0.40], handZ: -0.46, handMat: 'body2', vents: 0,
+      barrelR: 0.016, barrelLen: 0.55, barrelZ: -0.88, tip: -1.15,
+      mag: [0.045, 0.10, 0.07], magY: -0.115, magRot: -0.05, magMat: 'body2',
+      stock: [0.05, 0.095, 0.30], stockMat: 'body', sight: 'scope4x', fgZ: -0.40,
+      defaultMuzzle: 'brake' },
+    m249: { receiver: [0.095, 0.115, 0.46], receiverZ: -0.14, rail: 0.34, railZ: -0.15,
+      hand: [0.085, 0.088, 0.34], handZ: -0.44, handMat: 'tan', vents: 6,
+      barrelR: 0.021, barrelLen: 0.46, barrelZ: -0.83, tip: -1.06,
+      mag: [0.095, 0.13, 0.17], magY: -0.165, magRot: 0, magMat: 'ammoBox', magBox: true,
+      stock: [0.055, 0.088, 0.26], stockMat: 'body2', sight: 'iron', fgZ: -0.37,
+      defaultMuzzle: 'flashHider', bipod: true },
+    vss: { receiver: [0.07, 0.095, 0.36], receiverZ: -0.11, rail: 0.26, railZ: -0.13,
+      hand: [0.066, 0.075, 0.26], handZ: -0.39, handMat: 'tan', vents: 0,
+      barrelR: 0.013, barrelLen: 0.16, barrelZ: -0.52, tip: -0.60,
+      integralSupp: { r: 0.034, len: 0.26, z: -0.72 },
+      mag: [0.048, 0.11, 0.07], magY: -0.115, magRot: -0.08, magMat: 'body2',
+      stock: [0.045, 0.08, 0.18], stockMat: 'wood', sight: 'reflex', fgZ: -0.33 }
+  };
+  const MAG_MUL = { 0: 1, 1: 1.45, 2: 1.0, 3: 1.3, 4: 1.12 };
+  const MUZZLES = {
+    flashHider: { r: 0.021, r2: 0.024, len: 0.09, rot: 0, damp: 1.0, out: 0.075 },
+    comp:       { r: 0.023, r2: 0.023, len: 0.07, rot: 0, damp: 0.85, out: 0.058 },
+    slant:      { r: 0.024, r2: 0.024, len: 0.095, rot: 0.22, damp: 1.0, out: 0.08 },
+    brakeBig:   { r: 0.029, r2: 0.031, len: 0.12, rot: 0, damp: 0.9, out: 0.10 },
+    brake:      { r: 0.023, r2: 0.023, len: 0.14, rot: 0, damp: 1.0, out: 0.125 },
+    suppressor: { r: 0.033, r2: 0.033, len: 0.30, rot: 0, damp: 0.4, out: 0.285 }
+  };
+
+  DF.syncViewModel = function () {
+    const vm = DF.viewModel;
+    if (!vm || !vm.userData || !vm.userData.gunRoot) return;
+    const root = vm.userData.gunRoot;
+    const M = vm.userData.mats;
+    const disposables = [];
+    // 清空旧枪组，释放几何体与临时材质
+    const old = root.children.slice();
+    old.forEach(c => {
+      c.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.__gmTemp) o.material.dispose(); });
+      root.remove(c);
+    });
+    const w = DF.equippedWeapon();
+    const spec = GUN_SPECS[w.gun] || GUN_SPECS.m4a1;
+    const atts = (Array.isArray(w.atts) && w.atts.length === 5) ? w.atts : [0, 0, 0, 0, 0];
+    const box = (x, y, z) => new T.BoxGeometry(x, y, z);
+    const cyl = (r, len) => new T.CylinderGeometry(r, r, len, 12);
+    const add = (geo, mat, x, y, z, rx, rz) => {
+      const mesh = new T.Mesh(geo, mat);
+      mesh.position.set(x, y, z);
+      if (rx) mesh.rotation.x = rx;
+      if (rz) mesh.rotation.z = rz;
+      root.add(mesh);
+      return mesh;
+    };
+    const v3 = (hex, opacity) => { const m = new T.MeshStandardMaterial({ color: hex, roughness: 0.15, metalness: 0.3, transparent: true, opacity }); m.__gmTemp = true; return m; };
+
+    // ===== 机匣 =====
+    add(box(spec.receiver[0], spec.receiver[1], spec.receiver[2]), M.body, 0, 0, spec.receiverZ);
+    // ===== 上导轨 =====
+    add(box(0.055, 0.024, spec.rail), M.body2, 0, 0.062, spec.railZ);
+    // ===== 护木 =====
+    add(box(spec.hand[0], spec.hand[1], spec.hand[2]), M[spec.handMat] || M.tan, 0, -0.002, spec.handZ);
+    // ===== 散热孔 =====
+    for (let i = 0; i < (spec.vents || 0); i++) add(box(0.072, 0.012, 0.022), M.body, 0, 0.012, -0.30 - i * 0.055);
+    // ===== 枪管 =====
+    const barrel = add(cyl(spec.barrelR, spec.barrelLen), M.body, 0, 0.012, spec.barrelZ, Math.PI / 2);
+    // ===== VSS 一体消音套筒 =====
+    if (spec.integralSupp) add(cyl(spec.integralSupp.r, spec.integralSupp.len), M.body2, 0, 0.012, spec.integralSupp.z, Math.PI / 2);
+    // ===== M249 两脚架 =====
+    if (spec.bipod) {
+      [-1, 1].forEach(s => {
+        const leg = add(cyl(0.0075, 0.20), M.body2, s * 0.038, -0.075, -0.34);
+        leg.rotation.z = s * 0.45; leg.rotation.x = 0.4;
+      });
+    }
+    // ===== 枪口装置（配件位 2） =====
+    const muzKey = (atts[1] === 0) ? (spec.defaultMuzzle || 'flashHider') : (['flashHider', 'comp', 'flashHider', 'brakeBig', 'suppressor'][atts[1]] || 'flashHider');
+    const mz = MUZZLES[muzKey];
+    const muzLen = mz.len;
+    const muzCenter = spec.tip - muzLen / 2 + 0.02;
+    const muzzleZ = spec.tip - mz.out;
+    const mzMesh = add(new T.CylinderGeometry(mz.r, mz.r2, muzLen, 12), M.body2, 0, 0.012, muzCenter, Math.PI / 2, mz.rot);
+    // ===== 弹匣（武器型 + 配件位 4 容量倍率） =====
+    const magMul = MAG_MUL[atts[3]] || 1;
+    const magH = spec.mag[1] * magMul;
+    const magCY = spec.magY - (magH - spec.mag[1]) * 0.5;
+    const magGeo = spec.magBox ? box(spec.mag[0], magH, spec.mag[2]) : box(spec.mag[0], magH, spec.mag[2]);
+    const magMesh = add(magGeo, M[spec.magMat] || M.body2, 0, magCY, spec.receiverZ + 0.02, spec.magRot);
+    if (spec.magRot) magMesh.rotation.x = spec.magRot;   // AK 弯弹匣
+    // ===== 握把 =====
+    add(box(0.05, 0.15, 0.07), M.body, 0, -0.12, 0.06, 0.28);
+    // ===== 前握把（配件位 3） =====
+    if (atts[2] > 0) {
+      const rot = atts[2] === 2 ? -0.4 : 0.12;
+      add(box(0.045, atts[2] === 3 ? 0.085 : 0.11, 0.055), M.rubber, 0, -0.085, spec.fgZ, rot);
+      if (atts[2] === 4) { add(box(0.05, 0.012, 0.062), M.body2, 0, -0.045, spec.fgZ, rot); add(box(0.05, 0.012, 0.062), M.body2, 0, -0.085, spec.fgZ, rot); }
+    }
+    // ===== 枪托（配件位 5） =====
+    let stockLen = spec.stock[2], stockScale = 1;
+    if (atts[4] === 1) { stockScale = 0.78; stockLen *= 0.8; }
+    else if (atts[4] === 3) { stockScale = 1.28; stockLen *= 1.12; }
+    const stockCenter = 0.08 + stockLen / 2 - 0.02;
+    add(box(spec.stock[0] * stockScale, spec.stock[1] * stockScale, stockLen), M[spec.stockMat] || M.body2, 0, -0.005, stockCenter);
+    if (atts[4] === 2) add(box(0.034, 0.022, 0.11), M.rubber, 0, 0.045, stockCenter + 0.01);          // 战术托颊腮
+    else if (atts[4] === 4) add(box(0.055, 0.1, 0.03), M.rubber, 0, -0.01, stockCenter + stockLen / 2 - 0.01, 0.35);  // 射手托底板
+    // ===== 瞄具（配件位 1；0 = 原厂默认） =====
+    const sightKey = atts[0] === 0 ? spec.sight : (atts[0] === 1 ? 'reflex' : atts[0] === 2 ? 'holo' : atts[0] === 3 ? 'scope2x' : 'scope4x');
+    let redDot;
+    if (sightKey === 'iron') {
+      add(box(0.009, 0.024, 0.009), M.body2, 0, 0.075, -0.28);
+      add(box(0.030, 0.016, 0.01), M.body2, 0, 0.073, 0.03);
+      add(box(0.008, 0.030, 0.008), M.body2, -0.012, 0.07, 0.035);
+      add(box(0.008, 0.030, 0.008), M.body2, 0.012, 0.07, 0.035);
+      redDot = add(new T.CircleGeometry(0.0032, 8), M.dot, 0, 0.075, -0.277);
+      redDot.rotation.y = Math.PI;
+    } else if (sightKey === 'reflex' || sightKey === 'holo') {
+      add(box(0.026, 0.055, 0.09), M.body2, 0, 0.10, -0.056);
+      add(box(0.05, 0.03, 0.10), M.body2, 0, 0.088, -0.06);
+      const ringGeo = new T.TorusGeometry(0.030, 0.0065, 8, 18);
+      add(ringGeo, M.body, 0, 0.128, -0.085);
+      add(ringGeo, M.body2, 0, 0.128, -0.028);
+      const lensTint = sightKey === 'holo' ? v3(0x2bd06a, 0.22) : (atts[0] === 1 ? v3(0xd0503a, 0.22) : v3(0x8fd0e0, 0.16));
+      const lens = new T.Mesh(new T.CircleGeometry(0.029, 18), lensTint);
+      lens.position.set(0, 0.128, -0.028); root.add(lens);
+      redDot = add(new T.CircleGeometry(0.0032, 10), M.dot, 0, 0.128, -0.026);
+    } else {
+      // 2倍 / 4倍战术镜
+      const r = sightKey === 'scope4x' ? 0.040 : 0.033;
+      const len = sightKey === 'scope4x' ? 0.23 : 0.16;
+      const tube = add(cyl(r, len), M.scopeBody, 0, 0.122, -0.06, Math.PI / 2);
+      const ringGeo = new T.TorusGeometry(r, 0.005, 8, 18);
+      add(ringGeo, M.body2, 0, 0.122, -0.06 - len / 2 + 0.02);
+      add(ringGeo, M.body2, 0, 0.122, -0.06 + len / 2 - 0.02);
+      add(box(0.03, 0.035, 0.05), M.body2, 0, 0.085, -0.06);           // 镜座
+      if (sightKey === 'scope4x') {
+        add(box(0.02, 0.032, 0.024), M.scopeBody, 0, 0.162, -0.06);    // 高低塔
+        add(cyl(0.013, 0.02), M.scopeBody, 0.042, 0.122, -0.06, 0, Math.PI / 2); // 方向塔
+      }
+      const lensTint = v3(0x9fd8e8, 0.28);
+      const lens = new T.Mesh(new T.CircleGeometry(r - 0.004, 18), lensTint);
+      lens.position.set(0, 0.122, -0.06 - len / 2 + 0.005); root.add(lens);
+      redDot = add(new T.CircleGeometry(0.0028, 10), M.dot, 0, 0.122, -0.06 - len / 2 + 0.01);
+      redDot.rotation.y = Math.PI;
+    }
+    // ===== 更新 vm 挂钩（装填动画 / ADS / 火光） =====
+    vm.userData.mag = magMesh;
+    vm.userData.magBaseY = magCY;
+    vm.userData.redDot = redDot;
+    vm.userData.muzzle.position.z = muzzleZ;
+    vm.userData.flash.position.z = muzzleZ - 0.07;
+    vm.userData.flash2.position.z = muzzleZ - 0.04;
+    vm.userData.flashLight.position.set(0, 0.0, muzzleZ - 0.05);
+    vm.userData.flashDamp = mz.damp;
+  };
+
   /* ---------- 武器 HUD 标签 ---------- */
   DF.refreshWeaponLabel = function () {
     const el = document.getElementById('weapon');
@@ -7311,8 +7562,16 @@ DF.WujiaMusic.init();
   const $ = id => document.getElementById(id);
   const el = s => document.querySelector(s);
   const gunById = id => GUNS.find(g => g.id === id) || GUNS[0];
-  const isOwned = id => !!OWNED[id];
+  const isOwned = id => isGunUnlocked(id);
   const modCount = id => (DF.gunsmithAtts[id] || []).filter(v => v !== 0).length;
+  const unlockProgress = id => {
+    if (isGunUnlocked(id)) return '';
+    const d = profileData();
+    if (id === 'vss') return `吴家村撤离进度 ${Math.min(d.frontierExtracted | 0, 3)}/3`;
+    if (id === 'awm') return `击杀进度 ${Math.min(d.kills | 0, 80)}/80`;
+    if (id === 'm249') return `击杀进度 ${Math.min(d.kills | 0, 150)}/150`;
+    return '';
+  };
 
   function renderList() {
     const grid = $('gun-grid');
@@ -7324,7 +7583,7 @@ DF.WujiaMusic.init();
         <div>
           <div class="df-gs-nm" style="font-size:13px">${g.name}</div>
           <div class="gno">${g.no}</div>
-          <div class="gs ${isOwned(g.id) ? 'own' : 'lk'}">${isOwned(g.id) ? (modCount(g.id) ? `已改装 ×${modCount(g.id)}` : '原厂') : '🔒 未解锁'}</div>
+          <div class="gs ${isOwned(g.id) ? 'own' : 'lk'}">${isOwned(g.id) ? (modCount(g.id) ? `已改装 ×${modCount(g.id)}` : '原厂') : '🔒 未解锁 · ' + unlockProgress(g.id)}</div>
         </div>
       </div>`).join('');
   }
@@ -7357,7 +7616,7 @@ DF.WujiaMusic.init();
         <div>
           <div class="df-gs-nm">${g.name}</div>
           <div class="df-gs-no">${g.no}</div>
-          ${owned ? '<div class="df-gs-own">✓ 已入库 · 可出战</div>' : `<div class="df-gs-lk">🔒 ${g.req}</div>`}
+          ${owned ? '<div class="df-gs-own">✓ 已入库 · 可出战</div>' : `<div class="df-gs-lk">🔒 ${g.req} · ${unlockProgress(selected)}</div>`}
         </div>
         <button class="df-gs-equip${owned ? '' : ' locked'}" id="gs-equip" ${owned ? '' : 'aria-disabled="true"'}>${owned ? (DF.gunsmithEquipped === selected ? '已 装 备' : '出 战 装 备') : '未 解 锁'}</button>
       </div>
@@ -7393,6 +7652,7 @@ DF.WujiaMusic.init();
         renderList();
         renderDetail();
         DF.refreshWeaponLabel();
+        DF.syncViewModel && DF.syncViewModel();
       });
     });
     const eq = $('gs-equip');
@@ -7404,6 +7664,7 @@ DF.WujiaMusic.init();
       renderList();
       renderDetail();
       DF.refreshWeaponLabel();
+      DF.syncViewModel && DF.syncViewModel();
       DF.toast(`已出战装备「${gunById(selected).name}」`);
     });
     const rs = $('gs-reset');
@@ -7434,6 +7695,7 @@ DF.WujiaMusic.init();
   window.addEventListener('DOMContentLoaded', () => {
     bindArmory();
     DF.refreshWeaponLabel();
+    DF.syncViewModel && DF.syncViewModel();
   });
 
   /* ---------- 客人→房主 武器声明（联机） ---------- */
@@ -7454,6 +7716,7 @@ DF.WujiaMusic.init();
       }
       DF.declareWeaponToHost();
       DF.refreshWeaponLabel();
+      DF.syncViewModel && DF.syncViewModel();
       return r;
     };
   }

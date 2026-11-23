@@ -30,7 +30,15 @@ DF.Audio = {
     src.connect(f); f.connect(g); g.connect(ctx.destination);
     src.start();
   },
-  shot() { this.noise(0.13, 0.32, 2200, 'lowpass'); this.thump(90, 0.15, 0.12); },
+  shot() {
+    const VOICE = { m4a1: [0.13, 0.32, 2200, 90, 0.15, 0.12], ak74: [0.145, 0.36, 1650, 80, 0.17, 0.13],
+      mp5: [0.095, 0.27, 2600, 125, 0.12, 0.09], awm: [0.24, 0.44, 1250, 55, 0.24, 0.16],
+      m249: [0.12, 0.33, 2000, 95, 0.16, 0.12], vss: [0.10, 0.17, 750, 65, 0.10, 0.09] };
+    let g = 'm4a1';
+    try { const me = DF.players && DF.players.get && DF.players.get(DF.myId); if (me && me.weapon && me.weapon.gun) g = me.weapon.gun; } catch (e) { }
+    const v = VOICE[g] || VOICE.m4a1;
+    this.noise(v[0], v[1], v[2], 'lowpass'); this.thump(v[3], v[4], v[5]);
+  },
   enemyShot() { this.noise(0.10, 0.10, 900, 'lowpass'); },
   thump(freq, vol, dur) {
     if (!this.ctx || this.muted) return;
@@ -1159,7 +1167,7 @@ DF.M.gameEnd = function (winnerId, reason) {
       I_unlock();
       const lost = DF.bagValue(me);
       const safeKept = DF.safeValue(me);
-      DF.Profile.addDeath(me.kills);
+      DF.Profile.addDeath(me.kills, DF.mapId);
       if (safeKept > 0) { DF.Profile.data.bank += safeKept; DF.Profile.save(); }
       DF.showRaidResult(false, {
         killer: reason === 'time' ? '撤离超时' : '撤离失败',
@@ -1739,13 +1747,14 @@ DF.updateLocalPlayer = function (dt) {
     vm.rotation.y = me.ads ? 0 : Math.sin(DF.bobT) * 0.008 * bobAmt;
     // 装弹动画
     if (me.reloading) {
-      const prog = 1 - clamp((me.reloadEnd - DF.time) / CFG.reloadTime, 0, 1);
+      const prog = 1 - clamp((me.reloadEnd - DF.time) / (DF.effReload ? DF.effReload(me) : CFG.reloadTime), 0, 1);
       const s = Math.sin(prog * Math.PI);
       vm.rotation.x += s * 0.55;
       vm.position.y -= s * 0.14;
-      vm.userData.mag.position.y = -0.14 - s * 0.18;
+      const baseY = vm.userData.magBaseY != null ? vm.userData.magBaseY : -0.14;
+      vm.userData.mag.position.y = baseY - s * 0.18;
     } else {
-      vm.userData.mag.position.y = -0.14;
+      vm.userData.mag.position.y = vm.userData.magBaseY != null ? vm.userData.magBaseY : -0.14;
     }
     // 准镜透明度
     vm.userData.redDot.material.opacity = 1;

@@ -92,11 +92,11 @@
       svg: '<path d="M14 24h96v13H34l-6 12H14l6-12z"/><rect x="110" y="27" width="56" height="6"/><rect x="166" y="26" width="24" height="8"/><path d="M52 37l-4 18h9l5-18z"/><rect x="8" y="22" width="10" height="18"/><rect x="46" y="18" width="14" height="6"/>' },
     { id: 'mp5', name: 'MP5 冲锋枪', no: 'SMG · 9mm', dmg: 30, rng: 34, rof: 88, owned: true,
       svg: '<rect x="34" y="26" width="66" height="11" rx="2"/><rect x="100" y="29" width="46" height="5"/><rect x="146" y="28" width="14" height="7"/><rect x="52" y="37" width="9" height="17" transform="rotate(6 56 37)"/><rect x="66" y="37" width="8" height="10"/><path d="M30 26l-8 4v8l10 2z"/><rect x="62" y="20" width="12" height="6"/>' },
-    { id: 'awm', name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '干员等级 30 解锁',
+    { id: 'awm', name: 'AWM 狙击步枪', no: 'SR · 7.62mm', dmg: 95, rng: 97, rof: 12, owned: false, req: '累计击杀 80 解锁',
       svg: '<rect x="8" y="25" width="118" height="11" rx="1"/><rect x="126" y="28" width="52" height="5"/><rect x="178" y="26" width="16" height="8"/><rect x="40" y="36" width="9" height="14" transform="rotate(10 44 36)"/><rect x="64" y="36" width="7" height="10"/><path d="M4 28h10v13H4z"/><rect x="34" y="18" width="26" height="6"/><circle cx="34" cy="21" r="3.4"/><circle cx="60" cy="21" r="3.4"/><path d="M68 36l6 12h6l-4-12z"/>' },
     { id: 'm249', name: 'M249 轻机枪', no: 'LMG · 5.56mm', dmg: 40, rng: 60, rof: 80, owned: false, req: '累计击杀 150 解锁',
       svg: '<rect x="16" y="25" width="104" height="13" rx="1.5"/><rect x="120" y="28" width="52" height="6"/><rect x="172" y="27" width="16" height="8"/><rect x="46" y="38" width="8" height="12"/><path d="M64 38h10l4 16H60z"/><rect x="10" y="23" width="12" height="17"/><rect x="30" y="38" width="20" height="8" rx="4"/><rect x="58" y="19" width="18" height="6"/>' },
-    { id: 'vss', name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '完成赛季任务「无声猎手」解锁',
+    { id: 'vss', name: 'VSS 微声狙击步枪', no: 'SR · 9mm', dmg: 64, rng: 74, rof: 38, owned: false, req: '累计从吴家村成功撤离 3 次解锁',
       svg: '<rect x="22" y="26" width="86" height="11" rx="2"/><rect x="108" y="28" width="40" height="6"/><rect x="148" y="27" width="26" height="8" rx="3"/><rect x="50" y="37" width="8" height="15" transform="rotate(8 54 37)"/><rect x="16" y="24" width="10" height="16"/><rect x="58" y="20" width="10" height="6"/><path d="M70 37l5 11h5l-3-11z"/>' }
   ];
 
@@ -119,35 +119,79 @@
 
   /* ---------- 任务 ---------- */
   const MISSIONS = [
-    { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', cur: 2, max: 3, award: '5,000 哈弗币' },
-    { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', cur: 17, max: 25, award: '3,000 哈弗币' },
-    { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', cur: 40, max: 40, award: '2,000 哈弗币' },
-    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', cur: 1, max: 1, award: '1,000 哈弗币 + 头像框「吴家村守望者」' }
+    { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', max: 3, cur: d => d.extracted | 0, award: '5,000 哈弗币 + 20 三角券', hafu: 5000, delta: 20 },
+    { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', max: 25, cur: d => d.kills | 0, award: '3,000 哈弗币 + 10 三角券', hafu: 3000, delta: 10 },
+    { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', max: 40, cur: d => d.searched | 0, award: '2,000 哈弗币 + 5 三角券', hafu: 2000, delta: 5 },
+    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30 }
   ];
+
+  const CLAIMED_KEY = 'df_missions_claimed';
+  function loadClaimed() { try { const a = JSON.parse(localStorage.getItem(CLAIMED_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function saveClaimed(a) { try { localStorage.setItem(CLAIMED_KEY, JSON.stringify(a)); } catch (e) { } }
+  /* ---------- 顶栏：等级 / 经验 / 双货币 —— 全部来自 DF.Profile ---------- */
+  function renderTopBar() {
+    const p = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile : null;
+    if (!p) return;
+    const d = p.data;
+    const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+    setText('bank-hafu', (d.bank | 0).toLocaleString());
+    setText('bank-delta', (d.delta | 0).toLocaleString());
+    setText('player-lvl', 'LV.' + p.level());
+    const bar = $('player-xpbar');
+    if (bar) bar.style.width = Math.round(p.levelProgress() * 100) + '%';
+  }
+  DF.renderTopBar = renderTopBar;
+  function refreshMissionBadge() {
+    const badge = $('mission-badge');
+    if (!badge) return;
+    const d = (typeof DF !== 'undefined' && DF.Profile) ? DF.Profile.data : {};
+    const claimed = loadClaimed();
+    const n = MISSIONS.filter((m, i) => !claimed.includes(i) && m.cur(d) >= m.max).length;
+    badge.textContent = String(n);
+    badge.style.display = n > 0 ? '' : 'none';
+  }
 
   function renderMissions() {
     const list = $('mission-list');
     if (!list) return;
+    const prof = (typeof DF !== 'undefined' && DF.Profile && DF.Profile.data) ? DF.Profile.data : {};
+    const claimed = loadClaimed();
     list.innerHTML = MISSIONS.map((m, i) => {
-      const done = m.cur >= m.max;
-      const pct = Math.min(100, Math.round(m.cur / m.max * 100));
+      const cur = m.cur(prof);
+      const done = cur >= m.max;
+      const isClaimed = claimed.includes(i);
+      const pct = Math.min(100, Math.round(cur / m.max * 100));
       return `<div class="df-mission">
         <div class="df-micon">${m.icon}</div>
         <div class="df-minfo">
           <div class="df-mname">${m.name}</div>
           <div class="df-mdesc">${m.desc}</div>
-          <div class="df-mbar"><div class="bar"><i style="width:${pct}%"></i></div><span>${m.cur}/${m.max}</span></div>
+          <div class="df-mbar"><div class="bar"><i style="width:${pct}%"></i></div><span>${Math.min(cur, m.max)}/${m.max}</span></div>
         </div>
-        <button class="df-mclaim" data-idx="${i}" ${done ? '' : 'disabled'}>${done ? '领取' : '未完成'}</button>
+        <button class="df-mclaim" data-idx="${i}" ${done && !isClaimed ? '' : 'disabled'}>${isClaimed ? '已领取' : (done ? '领取' : '未完成')}</button>
       </div>`;
     }).join('');
+    refreshMissionBadge();
     list.addEventListener('click', e => {
       const btn = e.target.closest('.df-mclaim');
       if (!btn || btn.disabled) return;
-      const m = MISSIONS[Number(btn.getAttribute('data-idx'))];
+      const idx = Number(btn.getAttribute('data-idx'));
+      const m = MISSIONS[idx];
+      // 真实入账：哈弗币 + 三角券 计入档案资产并持久化
+      if (typeof DF !== 'undefined' && DF.Profile && DF.Profile.data) {
+        DF.Profile.data.bank += (m.hafu | 0);
+        DF.Profile.data.delta = (DF.Profile.data.delta | 0) + (m.delta | 0);
+        DF.Profile.save();
+        if (DF.renderProfile) DF.renderProfile();
+        renderTopBar();
+      }
+      const claimed = loadClaimed();
+      if (!claimed.includes(idx)) claimed.push(idx);
+      saveClaimed(claimed);
       btn.disabled = true;
       btn.textContent = '已领取';
-      toast(`任务「${m.name}」奖励已发放：${m.award}`);
+      refreshMissionBadge();
+      toast(`任务「${m.name}」奖励已发放：+$${(m.hafu | 0).toLocaleString()} 哈弗币 · +${m.delta | 0} 三角券`);
     });
   }
 
@@ -192,6 +236,7 @@
     /* 枪械库改由 10_gunsmith.js 渲染 */
     renderMissions();
     renderShop();
+    renderTopBar();
     // data-toast 占位按钮
     document.addEventListener('click', e => {
       const t = e.target.closest('[data-toast]');
@@ -214,6 +259,8 @@
         const r = _quit.apply(this, arguments);
         switchTab('lobby');
         if (typeof DF.renderProfile === 'function') DF.renderProfile();
+        renderMissions();
+        renderTopBar();
         return r;
       };
     }
