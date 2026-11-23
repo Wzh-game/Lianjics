@@ -116,8 +116,8 @@ DF.EXTRACT_DEFS = [
 DF.EXTRACT_DEFS_BY_MAP = {
   frontier: [
     { id: 'ex-n', name: '北部撤离点', x: 0, z: -1465, openAt: 0,   radius: 4.2, color: 0x7dd069, tag: 'A' },
-    { id: 'ex-se', name: '东南撤离点', x: 1425, z: 1425, openAt: 500, radius: 4.2, color: 0xffb347, tag: 'B' },
-    { id: 'ex-sw', name: '西南撤离点', x: -1425, z: 1445, openAt: 1000, radius: 4.2, color: 0xff6b5e, tag: 'C' }
+    { id: 'ex-se', name: '东南撤离点', x: 1425, z: 1425, openAt: 360, radius: 4.2, color: 0xffb347, tag: 'B' },
+    { id: 'ex-sw', name: '西南撤离点', x: -1425, z: 1445, openAt: 720, radius: 4.2, color: 0xff6b5e, tag: 'C' }
   ]
 };
 DF.getExtractDefs = function (mapId) {

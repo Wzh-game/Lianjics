@@ -4,7 +4,7 @@
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.4.2';
+DF.VERSION = '1.5.0';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -167,7 +167,7 @@ DF.initWorld = function (scene, mapId) {
     oilfield:{ half: 88,  fogN: 55, fogF: 245, ground: 400,  shadow: 95,  shadowMap: 1536, shadowFar: 300, sunPos: [70, 110, 45], texRepeat: 30, raidTime: 720, airdropAt: 300, sight: 62 },
     urban:   { half: 88,  fogN: 55, fogF: 245, ground: 400,  shadow: 95,  shadowMap: 1536, shadowFar: 300, sunPos: [70, 110, 45], texRepeat: 30, raidTime: 720, airdropAt: 300, sight: 62 },
     harbor:  { half: 88,  fogN: 55, fogF: 245, ground: 400,  shadow: 95,  shadowMap: 1536, shadowFar: 300, sunPos: [70, 110, 45], texRepeat: 30, raidTime: 720, airdropAt: 300, sight: 62 },
-    frontier:{ half: 1500, fogN: 160, fogF: 1500, ground: 5200, shadow: 85, shadowMap: 2048, shadowFar: 420, sunPos: [95, 135, 65], texRepeat: 250, raidTime: 1800, airdropAt: 900, sight: 110, followSun: true }
+    frontier:{ half: 1500, fogN: 160, fogF: 1500, ground: 5200, shadow: 85, shadowMap: 2048, shadowFar: 420, sunPos: [95, 135, 65], texRepeat: 250, raidTime: 1200, airdropAt: 600, sight: 110, followSun: true }
   }[mapId];
   CFG.mapHalf = TUNING.half;
   CFG.timeLimit = TUNING.raidTime;

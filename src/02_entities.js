@@ -166,7 +166,7 @@ DF.createPlayer = function (opt) {
     walkPhase: 0, aimT: 0, deathT: 0,
     input: { f: 0, s: 0, jump: false, fire: false, ads: false, reload: false, sprint: false },
     aimYaw: 0, aimPitch: 0,           // 机器人瞄准
-    botState: 'roam', botTarget: new T.Vector3(), botNextThink: 0, botStrafe: 0
+    botState: 'roam', botTarget: new T.Vector3(), botNextThink: 0, botStrafe: 0, _searchT: 0, _searchCd: 0, _lootTarget: null
   };
   if (opt.spawn) { p.pos.copy(opt.spawn); }
   if (DF.initInventory) DF.initInventory(p);
@@ -536,14 +536,51 @@ DF.updateBot = function (bot, dt) {
       if (d < nd) { nd = d; nearest = p; }
     });
     const sight = DF.sightRange || 62;
+    const prevState = bot.botState;
     if (nearest && nd < sight) {
       bot.botTargetPlayer = nearest.id;
       bot.botState = nd < sight * 0.65 ? 'attack' : 'chase';
+      bot._lootTarget = null; bot._searchT = 0;
+      // 报点：首次锁定本地玩家
+      if (nearest.id === DF.myId && prevState !== 'attack' && prevState !== 'chase' && prevState !== 'hunt') {
+        if (!DF._spotWarnT || t - DF._spotWarnT > 12) {
+          DF._spotWarnT = t;
+          if (DF.pushKillfeed) DF.pushKillfeed(`<span style="color:#ff8c1a">⚠ ${bot.name} 发现了你！</span>`);
+          if (DF.toast) DF.toast('被敌人发现了！');
+        }
+      }
     } else {
-      bot.botState = 'roam';
-      if (!bot.botTarget || bot.pos.distanceTo(bot.botTarget) < 4 || Math.random() < 0.25) {
-        const s = DF.spawns[rndInt(0, DF.spawns.length - 1)];
-        bot.botTarget.set(s.x + rnd(-12, 12), 0, s.z + rnd(-12, 12));
+      // 猎场：未见敌人时优先循声追击（10 秒内、70m 以内的枪声）
+      let ping = null;
+      if (DF.botPings && DF.botPings.length) {
+        for (let i = DF.botPings.length - 1; i >= 0; i--) {
+          const g = DF.botPings[i];
+          if (g.id === bot.id) continue;
+          if (t - g.t > 10) break;
+          if (Math.hypot(g.x - bot.pos.x, g.z - bot.pos.z) < 70) { ping = g; break; }
+        }
+      }
+      if (ping) {
+        if (bot.botState !== 'hunt' || !bot.botTarget || Math.hypot(ping.x - bot.botTarget.x, ping.z - bot.botTarget.z) > 6) {
+          bot.botTarget.set(ping.x + rnd(-8, 8), 0, ping.z + rnd(-8, 8));
+        }
+        bot.botState = 'hunt';
+        bot._lootTarget = null;
+      } else if (bot.botState === 'hunt' && bot.botTarget && bot.pos.distanceTo(bot.botTarget) > 6) {
+        // 继续循声搜索
+      } else {
+        bot.botState = 'roam';
+        // bot 也搜物资：盯上最近的未搜容器（带 25 秒搜刮冷却）
+        const canLoot = !bot._searchCd || t - bot._searchCd > 25;
+        const c = (canLoot && DF.nearestContainer) ? DF.nearestContainer(bot, 330) : null;
+        if (c) {
+          bot._lootTarget = c;
+          bot.botTarget.set(c.x + rnd(-1.5, 1.5), 0, c.z + rnd(-1.5, 1.5));
+        } else if (!bot.botTarget || bot.pos.distanceTo(bot.botTarget) < 4 || Math.random() < 0.25) {
+          const s = DF.spawns[rndInt(0, DF.spawns.length - 1)];
+          bot.botTarget.set(s.x + rnd(-12, 12), 0, s.z + rnd(-12, 12));
+          bot._lootTarget = null;
+        }
       }
     }
     if (Math.random() < 0.4) bot.botStrafe = rnd(-1, 1);
@@ -577,21 +614,35 @@ DF.updateBot = function (bot, dt) {
   }
   // 移动输入
   const dist = aimPos ? bot.pos.distanceTo(aimPos) : bot.pos.distanceTo(bot.botTarget);
-  let fwd = 0, side = 0;
+  let fwd = 0, side = 0, looting = false;
+  // 抵达容器：原地搜刮（2.4 秒）—— bot 会把物资翻走
+  const lc = bot._lootTarget;
+  if (lc) {
+    if (lc.searched) { bot._lootTarget = null; bot._searchT = 0; }
+    else if (Math.hypot(lc.x - bot.pos.x, lc.z - bot.pos.z) < 2.3) {
+      looting = true;
+      bot._searchT = (bot._searchT || 0) + dt;
+      if (bot._searchT > 2.4) {
+        lc.searched = true;
+        bot._lootTarget = null; bot._searchT = 0; bot._searchCd = t;
+      }
+    } else bot._searchT = 0;
+  }
   if (bot.botState === 'attack') {
     fwd = dist > 16 ? 1 : (dist < 7 ? -0.6 : 0);
     side = bot.botStrafe;
   } else if (bot.botState === 'chase') {
-    fwd = 1; side = bot.botStrafe * 0.5;
+    fwd = 1; side = bot.botStrafe * 0.7;
+  } else if (bot.botState === 'hunt') {
+    fwd = 1; side = bot.botStrafe * 0.3;
   } else {
     fwd = 1;
   }
+  if (looting) { fwd = 0; side = 0; }   // 搜刮时原地不动
   // 用 yaw 方向前进
-  const fx = -Math.sin(bot.yaw), fz = -Math.cos(bot.yaw);
-  const rx = Math.cos(bot.yaw), rz = -Math.sin(bot.yaw);
   bot.input.f = fwd; bot.input.s = side;
   bot.input.jump = false; bot.input.fire = false; bot.input.ads = bot.botState === 'attack' && dist > 12;
-  bot.input.sprint = false;
+  bot.input.sprint = !looting && (bot.botState === 'chase' || bot.botState === 'hunt');
   DF.applyMovement(bot, bot.input, dt);
 };
 

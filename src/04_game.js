@@ -1514,6 +1514,10 @@ DF.drawCompass = function () {
    ============================================================ */
 DF.onShotFired = function (p) {
   p.shots = (p.shots || 0) + 1;
+  // 全局枪声记录：bot 会听声辨位（10 秒内、70m 以内）
+  if (!DF.botPings) DF.botPings = [];
+  DF.botPings.push({ x: p.pos.x, z: p.pos.z, t: DF.time, id: p.id });
+  if (DF.botPings.length > 14) DF.botPings.shift();
 };
 
 DF.tryLocalFire = function () {
