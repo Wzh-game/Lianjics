@@ -76,7 +76,8 @@
   ];
 
   function opIcon(o, size) {
-    return `<svg class="df-opicon" viewBox="0 0 64 64" width="58" height="58" aria-hidden="true">
+    size = size || 58;
+    return `<svg class="df-opicon" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">
       <path d="M32 3 58 17v30L32 61 6 47V17Z" fill="${o.c2}" stroke="${o.c1}" stroke-width="2.4" stroke-linejoin="round"/>
       <path d="M32 12 50 23v18L32 52 14 41V23Z" fill="none" stroke="${o.c1}" stroke-width="1.4" opacity="0.75"/>
       <circle cx="32" cy="26" r="6.2" fill="${o.c1}"/>
@@ -104,20 +105,107 @@
         <div class="df-opbar"><span>战力</span><div class="bar"><i style="width:${o.power}%"></i></div><span>${o.power}</span></div>
       </div>`;
     }).join('');
-    wireOnce(grid, '__opsWired', e => {
-      const card = e.target.closest('.df-opcard');
-      if (!card) return;
-      const opId = card.getAttribute('data-op');
+    const selectOp = (opId) => {
       const op = OPERATORS.find(o => o.id === opId);
       if (op && op.premium && !loadOwnedOps().includes(op.id)) {
         toast(`「${op.name}」未解锁：商城购买「干员『${op.name}』档案」（${op.price || 0} 三角券）`);
-        return;
+        return false;
       }
       sel = opId;
       try { localStorage.setItem('df_operator', sel); } catch (err) { }
       grid.querySelectorAll('.df-opcard').forEach(c => c.classList.toggle('sel', c.getAttribute('data-op') === sel));
       toast(`已选择干员「${op ? op.name : sel}」`);
+      return true;
+    };
+    const detail = $('op-detail');
+    const abilityRow = (a, cls, master) => `
+      <div class="df-opd-ability ${cls || ''}">
+        <div class="df-opd-key">${a.key || (master ? '◆' : '●')}</div>
+        <div class="df-opd-aicon">${a.icon || '◆'}</div>
+        <div class="df-opd-abody">
+          <div class="df-opd-aname">${a.name}
+            <span class="df-opd-acd">${a.cd != null ? `冷却 <b>${a.cd}s</b>` : ''}${a.dur != null ? ` · 持续 <b>${a.dur}s</b>` : ''}</span>
+          </div>
+          <div class="df-opd-adesc">${a.desc || ''}</div>
+        </div>
+      </div>`;
+    const openDetail = (opId) => {
+      if (!detail) return;
+      const op = OPERATORS.find(o => o.id === opId);
+      if (!op) return;
+      const kit = (typeof DF !== 'undefined' && DF.operatorKits) ? DF.operatorKits[opId] : null;
+      const locked = op.premium && !loadOwnedOps().includes(op.id);
+      const ab = (kit && kit.abilities) || [];
+      const qA = ab.find(a => a.key === 'Q') || ab[0];
+      const eA = ab.find(a => a.key === 'E') || ab[1];
+      const vA = ab.find(a => a.key === 'V') || ab[2];
+      detail.innerHTML = `
+      <div class="df-opd-panel" role="document">
+        <button class="df-opd-close" data-opd-close aria-label="关闭">✕</button>
+        <div class="df-opd-left">
+          <div class="df-opd-hex">${opIcon(op, 132)}</div>
+          <div class="df-opd-name">${op.name}</div>
+          <div class="df-opd-en">${(kit && kit.en) ? kit.en : op.en}</div>
+          <div class="df-opd-role">${op.role}</div>
+          <div class="df-opd-chips"><span class="df-opd-chip">${kit ? kit.cls : op.role.split(' · ')[0]}</span>${op.premium ? '<span class="df-opd-chip">付费干员</span>' : ''}</div>
+          <div class="df-opd-power"><span>战力</span><div class="bar"><i style="width:${op.power}%"></i></div><span>${op.power}</span></div>
+          <div class="df-opd-desc">${op.desc}</div>
+          ${locked
+            ? `<div class="df-opd-locknote">该干员为付费干员，尚未解锁。<br>商城购买「干员『${op.name}』档案」（${op.price || 0} 三角券）后即可出战。</div>
+               <button class="df-opd-deploy" disabled>未解锁 · 商城解锁</button>`
+            : `<button class="df-opd-deploy" data-opd-deploy="${op.id}">出 战</button>`}
+        </div>
+        <div class="df-opd-right">
+          <div class="df-opd-sec">被动技能 · PASSIVE</div>
+          ${kit ? abilityRow({ key: '◇', icon: '✦', name: kit.passive.name, desc: kit.passive.desc }, 'is-passive', true) : '<div class="df-opd-adesc">暂无数据</div>'}
+          <div class="df-opd-sec">战术技能 · Q / E</div>
+          ${qA ? abilityRow(qA) : ''}
+          ${eA ? abilityRow(eA) : ''}
+          <div class="df-opd-sec">终极技能 · V</div>
+          ${vA ? abilityRow(vA, 'ultimate') : ''}
+          <div class="df-opd-foot"><span>单击卡片 = 选择 · 双击卡片 = 查看介绍</span><span>ESC / 点击遮罩关闭</span></div>
+        </div>
+      </div>`;
+      detail.hidden = false;
+      document.body.style.overflow = 'hidden';
+      const onKey = ev => { if (ev.key === 'Escape') closeDetail(); };
+      detail.__onKey = onKey;
+      document.addEventListener('keydown', onKey);
+    };
+    const closeDetail = () => {
+      if (!detail) return;
+      detail.hidden = true;
+      detail.innerHTML = '';
+      document.body.style.overflow = '';
+      if (detail.__onKey) { document.removeEventListener('keydown', detail.__onKey); detail.__onKey = null; }
+    };
+    // 单击 = 选择（延迟 260ms 判定，避免与双击冲突）；双击 = 打开介绍页
+    let clickTimer = null, clickOp = null;
+    wireOnce(grid, '__opsClickWired', e => {
+      const card = e.target.closest('.df-opcard');
+      if (!card) return;
+      const opId = card.getAttribute('data-op');
+      if (clickTimer && clickOp === opId) { clearTimeout(clickTimer); clickTimer = null; clickOp = null; openDetail(opId); return; }
+      clickOp = opId;
+      clickTimer = setTimeout(() => { clickTimer = null; clickOp = null; selectOp(opId); }, 260);
     });
+    if (!grid.__opsDblWired) {
+      grid.__opsDblWired = true;
+      grid.addEventListener('dblclick', e => {
+        const card = e.target.closest('.df-opcard');
+        if (!card) return;
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; clickOp = null; }
+        openDetail(card.getAttribute('data-op'));
+      });
+    }
+    if (detail && !detail.__wired) {
+      detail.__wired = true;
+      detail.addEventListener('click', e => {
+        if (e.target === detail || e.target.closest('[data-opd-close]')) { closeDetail(); return; }
+        const dep = e.target.closest('[data-opd-deploy]');
+        if (dep) { const id = dep.getAttribute('data-opd-deploy'); if (selectOp(id)) closeDetail(); }
+      });
+    }
   }
 
   /* ---------- 枪械库 ---------- */

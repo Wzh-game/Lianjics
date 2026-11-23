@@ -398,7 +398,7 @@ DF.bindTouch = function () {
   const sprintBar = document.getElementById('sprintbar');
   const sprintFill = sprintBar.querySelector('i');
 
-  /* ---------- 左侧摇杆：整个左下区域都能起手指，动态居中 ---------- */
+  /* ---------- 左侧摇杆：固定位置（不再随手指漂移） ---------- */
   const setStick = (cx, cy) => {
     const dx = cx - T_.joyCx, dy = cy - T_.joyCy;
     const L = Math.hypot(dx, dy);
@@ -436,18 +436,9 @@ DF.bindTouch = function () {
     if (T_.joyId !== null) return;
     const t = e.changedTouches[0];
     T_.joyId = t.identifier;
-    // 摇杆跟随手指出现（更符合手机操作习惯）
+    // 摇杆固定在屏幕左下角，起手指不改变位置
     const r = joy.getBoundingClientRect();
-    const fixedCx = r.left + r.width / 2, fixedCy = r.top + r.height / 2;
-    const dist = Math.hypot(t.clientX - fixedCx, t.clientY - fixedCy);
-    if (dist > 130) {
-      joy.style.left = Math.max(18, Math.min(t.clientX - 66, window.innerWidth * 0.34)) + 'px';
-      joy.style.bottom = Math.max(18, Math.min(window.innerHeight - t.clientY - 66, window.innerHeight * 0.42)) + 'px';
-      const r2 = joy.getBoundingClientRect();
-      T_.joyCx = r2.left + r2.width / 2; T_.joyCy = r2.top + r2.height / 2;
-    } else {
-      T_.joyCx = fixedCx; T_.joyCy = fixedCy;
-    }
+    T_.joyCx = r.left + r.width / 2; T_.joyCy = r.top + r.height / 2;
     joy.classList.add('active');
     setStick(t.clientX, t.clientY);
   }, { passive: false });
