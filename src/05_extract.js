@@ -194,42 +194,20 @@ DF.buildExtractionWorld = function (scene) {
   let cid = 0;
   const addContainer = (type, x, z, rotY) => {
     const def = CONTAINER_TYPES[type];
-    const g = new T.Group();
     const [w, h, d] = def.size;
-    const mat = new T.MeshStandardMaterial({
-      color: new T.Color(def.color), roughness: 0.75, metalness: type === 'safe' ? 0.7 : 0.25
-    });
-    const body = new T.Mesh(new T.BoxGeometry(w, h, d), mat);
-    body.castShadow = true; body.receiveShadow = true;
-    body.position.y = h / 2;
-    g.add(body);
-    // 装饰：盖板 / 把手 / 锁
-    if (type === 'crate') {
-      const band = new T.Mesh(new T.BoxGeometry(w * 1.02, 0.06, d * 0.18),
-        new T.MeshStandardMaterial({ color: 0x5a4020, roughness: 0.8, metalness: 0.4 }));
-      band.position.y = h * 0.72; g.add(band);
-    } else if (type === 'locker') {
-      const line = new T.Mesh(new T.BoxGeometry(0.03, h * 0.9, d * 0.05),
-        new T.MeshStandardMaterial({ color: 0x2a333a }));
-      line.position.set(0, h / 2, d / 2 + 0.01); g.add(line);
-      const handle = new T.Mesh(new T.BoxGeometry(0.05, 0.22, 0.05),
-        new T.MeshStandardMaterial({ color: 0xb0b4b8, metalness: 0.9, roughness: 0.3 }));
-      handle.position.set(0.18, h / 2, d / 2 + 0.04); g.add(handle);
-    } else if (type === 'safe') {
-      const knob = new T.Mesh(new T.CylinderGeometry(0.11, 0.11, 0.06, 12),
-        new T.MeshStandardMaterial({ color: 0xd0c090, metalness: 0.95, roughness: 0.2 }));
-      knob.rotation.x = Math.PI / 2;
-      knob.position.set(0, h * 0.55, d / 2 + 0.03); g.add(knob);
-    } else if (type === 'airdrop') {
-      // 空投烟雾
-      const smoke = new T.Mesh(new T.ConeGeometry(0.6, 1.6, 8, 1, true),
-        new T.MeshBasicMaterial({ color: 0xffcf9a, transparent: true, opacity: 0.16, depthWrite: false, side: T.DoubleSide }));
-      smoke.position.y = h + 0.8; g.add(smoke);
+    // 3D 精细模型（13_models.js）；未加载时回退为朴素方块
+    const g = (DF.Models && DF.Models.container)
+      ? DF.Models.container(type, w, h, d)
+      : (() => {
+          const gg = new T.Group();
+          const m = new T.Mesh(new T.BoxGeometry(w, h, d),
+            new T.MeshStandardMaterial({ color: new T.Color(def.color), roughness: 0.75 }));
+          m.position.y = h / 2; m.castShadow = true; m.receiveShadow = true; gg.add(m);
+          return gg;
+        })();
+    if (type === 'airdrop') {
       const light = new T.PointLight(0xff9a4a, 1.6, 16, 2);
       light.position.y = 1.4; g.add(light);
-      const stripe = new T.Mesh(new T.BoxGeometry(w * 1.02, 0.22, d * 1.02),
-        new T.MeshStandardMaterial({ color: 0xe8d8a0, roughness: 0.7 }));
-      stripe.position.y = h * 0.5; g.add(stripe);
     }
     g.position.set(x, 0, z);
     g.rotation.y = rotY || 0;
@@ -516,6 +494,79 @@ DF.completeSearch = function (c) {
   DF.updateExtractHUD && DF.updateExtractHUD(0.016);
 };
 
+/* ---------------- 三维战利品展示（打开容器时在周围摆出真模型） ---------------- */
+DF.lootVisuals = [];
+DF.lootLights = [];
+DF.clearLootVisuals = function () {
+  (DF.lootLights || []).forEach(l => { if (l.parent) l.parent.remove(l); });
+  DF.lootLights = [];
+  const arr = DF.lootVisuals || [];
+  arr.forEach(o => {
+    if (o.group && o.group.parent) o.group.parent.remove(o.group);
+    if (o.group && DF.Models && DF.Models.dispose) DF.Models.dispose(o.group);
+    if (o.ring && o.ring.parent) o.ring.parent.remove(o.ring);
+  });
+  DF.lootVisuals = [];
+};
+DF.removeLootVisual = function (itemId) {
+  const arr = DF.lootVisuals || [];
+  const i = arr.findIndex(o => o.itemId === itemId);
+  if (i < 0) return;
+  const o = arr[i];
+  if (o.group && o.group.parent) o.group.parent.remove(o.group);
+  if (o.group && DF.Models && DF.Models.dispose) DF.Models.dispose(o.group);
+  if (o.ring && o.ring.parent) o.ring.parent.remove(o.ring);
+  arr.splice(i, 1);
+};
+/** 在容器前方摆出该容器内剩余物资的 3D 模型（本地展示，不影响同步） */
+DF.spawnLootVisuals = function (c) {
+  DF.clearLootVisuals();
+  if (!c || !DF.scene || !DF.Models || !DF.Models.loot) return;
+  const me = DF.players.get(DF.myId);
+  if (!me || !me.inv || !me.inv.items) return;
+  const items = me.inv.items.filter(it => !it.taken);
+  if (!items.length) return;
+  const T3 = T;
+  const yaw = c.mesh ? c.mesh.rotation.y : 0;
+  const dist = Math.max(0.95, (CONTAINER_TYPES[c.type] ? CONTAINER_TYPES[c.type].size[0] : 1) * 0.75 + 0.55);
+  const spread = Math.min(1.5, 0.34 * (items.length - 1));
+  // 拾取物小补光：让金属/深色模型在野外也能看清
+  const light = new T3.PointLight(0xffd9a0, 1.15, 4.6, 2);
+  light.position.set(c.x, 0.9, c.z);
+  DF.scene.add(light);
+  DF.lootLights.push(light);
+  items.forEach((it, i) => {
+    const def = LOOT[it.key] || {};
+    const g = DF.Models.loot(it.key);
+    const t = items.length === 1 ? 0 : (i / (items.length - 1) - 0.5);
+    const local = new T3.Vector3(t * spread * 2, 0, dist);
+    local.applyAxisAngle(new T3.Vector3(0, 1, 0), yaw);
+    const baseY = 0.20;
+    g.position.set(c.x + local.x, baseY, c.z + local.z);
+    g.rotation.y = Math.random() * Math.PI * 2;
+    const baseRot = g.rotation.y;
+    const phase = Math.random() * Math.PI * 2;
+    const dist2 = Math.hypot(local.x, local.z);
+    g.scale.setScalar(1.35);
+    g.userData.baseY = baseY;
+    g.onBeforeRender = function () {
+      const now = performance.now() * 0.001;
+      this.rotation.y = baseRot + now * 0.9;
+      this.position.y = baseY + Math.sin(now * 1.7 + phase) * 0.028;
+    };
+    DF.scene.add(g);
+    // 地面稀有度光环
+    const ring = new T3.Mesh(
+      new T3.RingGeometry(0.13, 0.20, 20),
+      new T3.MeshBasicMaterial({ color: new T3.Color(def.color || '#ffffff'), transparent: true, opacity: 0.42, side: T3.DoubleSide, depthWrite: false })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(c.x + local.x, 0.02, c.z + local.z);
+    DF.scene.add(ring);
+    DF.lootVisuals.push({ itemId: it.id, group: g, ring: ring, dist: dist2 });
+  });
+};
+
 DF.takeItem = function (idx) {
   const me = DF.players.get(DF.myId);
   if (!me || !me.inv) return;
@@ -529,6 +580,7 @@ DF.takeItem = function (idx) {
   }
   item.taken = true;
   me.inv.bag.push({ key: item.key, id: item.id });
+  if (DF.removeLootVisual) DF.removeLootVisual(item.id);
   if (def.heal) { me.hp = Math.min(CFG.maxHp, me.hp + def.heal); }
   if (def.armor) { me.armor = Math.min(0.55, (me.armor || 0) + def.armor); }
   DF.Audio.loot && DF.Audio.loot();

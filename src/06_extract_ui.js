@@ -153,6 +153,7 @@ DF.openLootUI = function (c) {
     DF.input.tdx = 0; DF.input.tdy = 0;
   }
   DF.lootContainer = c;
+  if (DF.spawnLootVisuals) DF.spawnLootVisuals(c);
   document.getElementById('lootPanel').classList.remove('hidden');
   document.getElementById('lootTitle').textContent = c ? CONTAINER_TYPES[c.type].label : '背包';
   document.getElementById('lootSub').textContent = c
@@ -165,6 +166,7 @@ DF.openLootUI = function (c) {
 
 DF.closeLootUI = function () {
   DF.lootOpen = false;
+  if (DF.clearLootVisuals) DF.clearLootVisuals();
   document.body.classList.remove('loot-active');
   DF.lootContainer = null;
   document.getElementById('lootPanel').classList.add('hidden');
@@ -174,6 +176,15 @@ DF.closeLootUI = function () {
     DF.requestPointerLockSafe(DF.renderer.domElement);
   }
 };
+
+/* 物资 3D 缩略图（离屏渲染缓存；不可用时退回色块） */
+function lootIcon(key, size) {
+  try {
+    const url = (DF.Models && DF.Models.thumb) ? DF.Models.thumb(key, size || 64) : '';
+    if (url) return `<img src="${url}" alt="">`;
+  } catch (e) { }
+  return `<span class="fallback" style="background:${(LOOT[key] || {}).color || '#888'}"></span>`;
+}
 
 DF.refreshLootUI = function () {
   const me = DF.players.get(DF.myId);
@@ -187,7 +198,7 @@ DF.refreshLootUI = function () {
     box.innerHTML = me.inv.items.map((it, i) => {
       const d = LOOT[it.key];
       return `<div class="lootitem ${it.taken ? 'taken' : ''}">
-        <span class="dot" style="background:${d.color}"></span>
+        <span class="dot thumb">${lootIcon(it.key, 72)}</span>
         <span class="nm">${d.name}<span style="color:#7a8a6a;font-size:10.5px"> · ${d.size}格</span></span>
         <span class="pr">$${d.value.toLocaleString()}</span>
         ${it.taken ? '<span class="act" style="opacity:.5">已拾取</span>' : `<button data-take="${i}">拾取</button>`}
@@ -209,7 +220,7 @@ DF.refreshLootUI = function () {
     if (slotUsed >= BAG_SLOTS) return;
     slotUsed += d.size;
     html += `<div class="bagslot filled" data-bag="${idx}" title="${d.name} · $${d.value}">
-      <span class="sq" style="background:${d.color}"></span>
+      <span class="sq thumb">${lootIcon(it.key, 56)}</span>
       <span class="nl">${d.short}</span>
       <span class="vl">$${d.value >= 1000 ? (d.value / 1000).toFixed(1) + 'k' : d.value}</span>
     </div>`;
@@ -225,7 +236,7 @@ DF.refreshLootUI = function () {
   const sg = document.getElementById('safeGrid');
   let sh = me.inv.safe.map(it => {
     const d = LOOT[it.key];
-    return `<div class="safeslot"><span class="sq" style="background:${d.color}"></span>
+    return `<div class="safeslot"><span class="sq thumb">${lootIcon(it.key, 48)}</span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${d.short}</span>
       <span style="color:#ffb347;font-size:10.5px">$${d.value >= 1000 ? (d.value / 1000).toFixed(1) + 'k' : d.value}</span></div>`;
   }).join('');

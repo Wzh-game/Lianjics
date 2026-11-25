@@ -233,6 +233,16 @@ h2.ptitle span{color:var(--accent)}
 .safeslot{background:rgba(255,140,26,.07);border:1px solid #6a4a20;min-height:46px;display:flex;
   align-items:center;gap:6px;font-size:11px;padding:4px 7px}
 .safeslot .sq{width:10px;height:10px;border-radius:2px;flex:0 0 auto}
+/* 物资 3D 缩略图 */
+.lootitem .dot.thumb{width:38px;height:38px;border-radius:3px;background:rgba(255,255,255,.035);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto}
+.lootitem .dot.thumb img{width:100%;height:100%;object-fit:contain}
+.lootitem .dot.thumb .fallback{width:12px;height:12px;border-radius:2px;display:block}
+.bagslot .sq.thumb{width:34px;height:34px;margin-bottom:4px;background:rgba(255,255,255,.035);border-radius:3px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bagslot .sq.thumb img{width:100%;height:100%;object-fit:contain}
+.bagslot .sq.thumb .fallback{width:12px;height:12px;border-radius:2px;display:block}
+.safeslot .sq.thumb{width:26px;height:26px;background:rgba(255,255,255,.035);border-radius:3px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.safeslot .sq.thumb img{width:100%;height:100%;object-fit:contain}
+.safeslot .sq.thumb .fallback{width:10px;height:10px;border-radius:2px;display:block}
 #lootFoot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;
   border-top:1px solid #2c3623;padding-top:12px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;gap:8px}
 #lootFoot b{color:var(--accent2)}
@@ -971,7 +981,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.10.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.11.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
