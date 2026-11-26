@@ -981,7 +981,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v1.11.0</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v1.12.0</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -1249,7 +1249,7 @@ body.touchmode #joystickHint{display:none}
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.11.0';
+DF.VERSION = '1.12.0';
 
 // 无 user gesture 时 requestPointerLock 会同步抛错或返回 rejected Promise（客人收到 start 直接进场即触发）。
 // 统一静默吞掉，锁定交给玩家点按画布时再做。
@@ -2505,60 +2505,173 @@ function rayCapsuleY(origin, dir, base, height, radius) {
   return best;
 }
 
-/* ---------------- 角色模型 ---------------- */
+/* ---------------- 角色模型（精细士兵 · 程序化） ----------------
+   结构：root ─ body(静态合批) / legL / legR / armL / armR / gun / label
+   约定：本地 -Z 为前方；腿组枢轴在髋部、臂组枢轴在肩部（updateCharacter 直接转 rotation.x）
+   ------------------------------------------------------------ */
 DF.makeCharacter = function (colorHex) {
   const g = new T.Group();
+  const team = new T.Color(colorHex == null ? 0x424f2c : colorHex);
+  const teamLight = team.clone().lerp(new T.Color(0xffffff), 0.22);
+  const mk = (c, rough, metal) => new T.MeshStandardMaterial({
+    color: new T.Color(c).convertSRGBToLinear(), roughness: rough == null ? 0.88 : rough, metalness: metal || 0
+  });
   const mats = {
-    uniform: new T.MeshStandardMaterial({ color: new T.Color(colorHex), roughness: 0.85 }),
-    vest: new T.MeshStandardMaterial({ color: 0x33392c, roughness: 0.9 }),
-    skin: new T.MeshStandardMaterial({ color: 0xb08a63, roughness: 0.8 }),
-    helmet: new T.MeshStandardMaterial({ color: 0x3d4732, roughness: 0.7 }),
-    black: new T.MeshStandardMaterial({ color: 0x1d211a, roughness: 0.6 })
+    uniform: mk(team, 0.9),
+    uniform2: mk(team.clone().multiplyScalar(0.78), 0.9),
+    accent: mk(teamLight, 0.8),
+    vest: mk(0x3c4433, 0.92),
+    pouch: mk(0x474f3a, 0.92),
+    helmet: mk(0x3a4430, 0.82),
+    boot: mk(0x22251e, 0.95),
+    skin: mk(0xb08a63, 0.82),
+    black: mk(0x15171a, 0.7, 0.3),
+    metal: mk(0x60676c, 0.45, 0.75),
+    lens: new T.MeshStandardMaterial({ color: new T.Color(0x1d3a44).convertSRGBToLinear(), roughness: 0.12, metalness: 0.85 })
   };
-  // 躯干
-  const torso = new T.Mesh(new T.BoxGeometry(0.56, 0.66, 0.34), mats.uniform);
-  torso.position.y = 1.16; torso.castShadow = true; torso.userData.part = 'body';
-  g.add(torso);
-  // 战术背心
-  const vest = new T.Mesh(new T.BoxGeometry(0.60, 0.44, 0.38), mats.vest);
-  vest.position.y = 1.20; vest.castShadow = true; vest.userData.part = 'body';
-  g.add(vest);
-  // 头
-  const head = new T.Mesh(new T.BoxGeometry(0.26, 0.28, 0.27), mats.skin);
-  head.position.y = 1.64; head.castShadow = true; head.userData.part = 'head';
-  g.add(head);
+  const B = (w, h, dd) => new T.BoxGeometry(w, h, dd);
+  const CY = (r, h, seg) => new T.CylinderGeometry(r, r, h, seg || 10);
+  const SPH = (r, a, b, c, e, f2, hh) => new T.SphereGeometry(r, a || 12, b || 8, c, e, f2, hh);
+  const add = (parent, geo, m, x, y, z, rx, ry, rz) => {
+    const mesh = new T.Mesh(geo, m);
+    mesh.position.set(x || 0, y || 0, z || 0);
+    if (rx) mesh.rotation.x = rx;
+    if (ry) mesh.rotation.y = ry;
+    if (rz) mesh.rotation.z = rz;
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
+    mesh.userData.part = 'body';
+    parent.add(mesh);
+    return mesh;
+  };
+
+  /* ================= 躯干 / 背心 / 头（静态合批） ================= */
+  const body = new T.Group();
+  add(body, B(0.44, 0.26, 0.30), mats.uniform2, 0, 0.96, 0);                 // 骨盆
+  add(body, B(0.34, 0.16, 0.26), mats.vest, 0, 0.86, 0);                     // 腰带
+  add(body, B(0.10, 0.12, 0.30), mats.pouch, -0.20, 0.90, 0);                // 腰包
+  add(body, B(0.10, 0.12, 0.30), mats.pouch, 0.20, 0.90, 0);
+  add(body, B(0.44, 0.50, 0.31), mats.uniform, 0, 1.27, 0);                   // 胸腔
+  add(body, B(0.30, 0.10, 0.27), mats.uniform, 0, 1.50, 0);                   // 肩部连接
+  // 防弹背心中段 + 前后插板
+  add(body, B(0.50, 0.46, 0.34), mats.vest, 0, 1.26, 0);
+  add(body, B(0.40, 0.34, 0.05), mats.pouch, 0, 1.30, -0.185);               // 前插板
+  add(body, B(0.40, 0.34, 0.05), mats.pouch, 0, 1.30, 0.185);                // 后插板
+  add(body, B(0.52, 0.10, 0.36), mats.vest, 0, 1.03, 0);                     // 侧围
+  // 弹匣包 / 电台 / 医疗包
+  add(body, B(0.075, 0.12, 0.06), mats.pouch, -0.11, 1.13, -0.20);
+  add(body, B(0.075, 0.12, 0.06), mats.pouch, 0, 1.13, -0.20);
+  add(body, B(0.075, 0.12, 0.06), mats.pouch, 0.11, 1.13, -0.20);
+  add(body, B(0.012, 0.06, 0.062), mats.black, -0.11, 1.13, -0.235);
+  add(body, B(0.012, 0.06, 0.062), mats.black, 0, 1.13, -0.235);
+  add(body, B(0.012, 0.06, 0.062), mats.black, 0.11, 1.13, -0.235);
+  add(body, B(0.10, 0.14, 0.07), mats.pouch, 0.17, 1.36, -0.17, 0, 0, -0.1); // 电台
+  add(body, B(0.026, 0.14, 0.026), mats.black, 0.20, 1.46, -0.15);           // 天线
+  add(body, B(0.08, 0.08, 0.06), mats.pouch, -0.17, 1.40, -0.17);            // 医疗包
+  // 肩带
+  add(body, B(0.09, 0.10, 0.30), mats.vest, -0.13, 1.50, -0.02);
+  add(body, B(0.09, 0.10, 0.30), mats.vest, 0.13, 1.50, -0.02);
+  // 背包
+  add(body, B(0.34, 0.40, 0.19), mats.uniform2, 0, 1.28, 0.245);
+  add(body, B(0.36, 0.06, 0.20), mats.pouch, 0, 1.44, 0.245);
+  add(body, B(0.10, 0.30, 0.02), mats.accent, 0, 1.26, 0.345);               // 队色识别条
+  add(body, B(0.14, 0.10, 0.06), mats.pouch, -0.12, 1.10, 0.245);
+  // 护肩
+  [-1, 1].forEach(sd => {
+    add(body, SPH(0.115, 10, 8), mats.uniform2, sd * 0.29, 1.45, 0);
+    add(body, B(0.05, 0.05, 0.10), mats.accent, sd * 0.335, 1.47, -0.02);    // 队色臂章
+  });
+  // 颈 + 头
+  add(body, CY(0.072, 0.10, 10), mats.skin, 0, 1.55, 0);
+  add(body, B(0.235, 0.25, 0.245), mats.skin, 0, 1.66, 0);
+  add(body, B(0.24, 0.10, 0.05), mats.black, 0, 1.60, -0.115);               // 面罩
+  add(body, B(0.20, 0.06, 0.05), mats.lens, 0, 1.70, -0.125, -0.12);         // 护目镜
+  add(body, B(0.22, 0.03, 0.06), mats.black, 0, 1.735, -0.10);               // 镜带
   // 头盔
-  const helmet = new T.Mesh(new T.SphereGeometry(0.185, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), mats.helmet);
-  helmet.position.y = 1.70; helmet.castShadow = true; helmet.userData.part = 'head';
-  g.add(helmet);
-  // 腿
-  const legL = new T.Mesh(new T.BoxGeometry(0.19, 0.78, 0.22), mats.uniform);
-  legL.position.set(-0.16, 0.44, 0); legL.castShadow = true; legL.userData.part = 'leg';
-  const legR = legL.clone(); legR.position.x = 0.16; legR.userData.part = 'leg';
-  g.add(legL, legR);
-  // 手臂
-  const armL = new T.Mesh(new T.BoxGeometry(0.16, 0.52, 0.18), mats.uniform);
-  armL.position.set(-0.36, 1.22, 0); armL.castShadow = true; armL.userData.part = 'body';
-  const armR = armL.clone(); armR.position.x = 0.36; armR.userData.part = 'body';
-  g.add(armL, armR);
-  // 手持枪
+  const dome = add(body, SPH(0.175, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), mats.helmet, 0, 1.72, 0.005);
+  dome.scale.set(1.0, 0.95, 1.05);
+  add(body, new T.TorusGeometry(0.168, 0.018, 6, 16), mats.helmet, 0, 1.72, 0.005, Math.PI / 2).scale.set(1, 1.05, 0.6);
+  add(body, B(0.05, 0.03, 0.05), mats.accent, 0, 1.845, 0.02);               // 队色盔顶标
+  add(body, B(0.10, 0.03, 0.04), mats.black, 0, 1.80, -0.14, -0.2);          // 夜视底座
+  add(body, CY(0.026, 0.05, 8), mats.black, 0, 1.80, -0.165, Math.PI / 2);
+  [-1, 1].forEach(sd => add(body, B(0.02, 0.035, 0.10), mats.black, sd * 0.17, 1.74, 0.01)); // 侧轨
+  add(body, CY(0.012, 0.03, 8), mats.accent, 0.055, 1.71, -0.155, Math.PI / 2); // 头盔灯
+
+  /* ================= 四肢 ================= */
+  const makeLeg = sd => {
+    const L = new T.Group();
+    add(L, B(0.205, 0.36, 0.22), mats.uniform, 0, -0.18, 0);                 // 大腿
+    add(L, B(0.20, 0.05, 0.22), mats.uniform2, 0, -0.34, 0);                 // 裤缝
+    add(L, B(0.20, 0.13, 0.20), mats.pouch, 0, -0.40, -0.03);                // 护膝
+    add(L, B(0.175, 0.34, 0.185), mats.uniform, 0, -0.56, 0);                // 小腿
+    add(L, B(0.185, 0.08, 0.20), mats.pouch, 0, -0.70, 0);                   // 绑腿
+    add(L, B(0.075, 0.30, 0.02), mats.accent, sd * 0.10, -0.55, 0.0);        // 队色侧条
+    add(L, B(0.20, 0.115, 0.32), mats.boot, 0, -0.80, -0.03);                // 战术靴
+    add(L, B(0.205, 0.05, 0.10), mats.boot, 0, -0.845, -0.14);
+    L.userData.part = 'leg';
+    return L;
+  };
+  const legL = makeLeg(-1), legR = makeLeg(1);
+  legL.position.set(-0.145, 0.86, 0);
+  legR.position.set(0.145, 0.86, 0);
+  const makeArm = sd => {
+    const A = new T.Group();
+    add(A, B(0.145, 0.30, 0.16), mats.uniform, 0, -0.14, 0);                 // 上臂
+    add(A, B(0.155, 0.08, 0.17), mats.uniform2, 0, -0.27, 0);                // 肘部
+    add(A, B(0.125, 0.28, 0.14), mats.uniform, 0, -0.42, 0);                 // 小臂
+    add(A, B(0.135, 0.07, 0.15), mats.pouch, 0, -0.50, 0);                   // 护腕
+    add(A, B(0.11, 0.13, 0.13), mats.black, 0, -0.60, 0, 0, 0, 0);           // 手套
+    add(A, B(0.06, 0.06, 0.06), mats.accent, sd * 0.07, -0.12, 0);           // 队色臂环
+    A.userData.part = 'body';
+    return A;
+  };
+  const armL = makeArm(-1), armR = makeArm(1);
+  armL.position.set(-0.30, 1.46, 0);
+  armR.position.set(0.30, 1.46, 0);
+  armL.rotation.x = -0.34; armL.rotation.z = 0.10; armL.rotation.y = -0.06;
+  armR.rotation.x = -0.42; armR.rotation.z = -0.12; armR.rotation.y = 0.05;
+
+  /* ================= 手持步枪 ================= */
   const gun = new T.Group();
-  const gRec = new T.Mesh(new T.BoxGeometry(0.09, 0.12, 0.62), mats.black);
-  gRec.position.set(0, 0, -0.16);
-  const gBar = new T.Mesh(new T.CylinderGeometry(0.028, 0.028, 0.42, 8), mats.black);
-  gBar.rotation.x = Math.PI / 2; gBar.position.set(0, 0.015, -0.62);
-  const gMag = new T.Mesh(new T.BoxGeometry(0.07, 0.2, 0.11), mats.vest);
-  gMag.position.set(0, -0.13, -0.14);
-  gun.add(gRec, gBar, gMag);
-  gun.position.set(0.3, 1.22, -0.42);
+  const mMetal = mats.black, mDark = mats.vest;
+  add(gun, B(0.085, 0.115, 0.50), mMetal, 0, 0, -0.12);                      // 机匣
+  add(gun, B(0.055, 0.045, 0.36), mMetal, 0, 0.075, -0.10);                  // 上导轨
+  add(gun, B(0.075, 0.085, 0.34), mDark, 0, -0.005, -0.48);                  // 护木
+  for (let i = 0; i < 4; i++) add(gun, B(0.02, 0.012, 0.03), mMetal, 0, 0.05, -0.40 - i * 0.07);
+  add(gun, CY(0.016, 0.34, 8), mMetal, 0, 0.012, -0.78, Math.PI / 2);        // 枪管
+  add(gun, CY(0.022, 0.09, 8), mMetal, 0, 0.012, -0.96, Math.PI / 2);        // 消焰器
+  add(gun, B(0.055, 0.17, 0.10), mDark, 0, -0.13, -0.22, 0.18);              // 弹匣
+  add(gun, B(0.05, 0.12, 0.07), mDark, 0, -0.11, 0.02, -0.25);               // 握把
+  add(gun, B(0.06, 0.09, 0.24), mDark, 0, -0.02, 0.24);                      // 枪托
+  add(gun, B(0.065, 0.10, 0.03), mMetal, 0, 0.0, 0.36);
+  add(gun, B(0.055, 0.045, 0.13), mMetal, 0, 0.115, -0.06);                  // 瞄具
+  add(gun, B(0.038, 0.036, 0.004), mats.lens, 0, 0.118, 0.005);              // 镜片
+  add(gun, B(0.02, 0.02, 0.02), mMetal, 0, 0.148, -0.06);
+  add(gun, B(0.02, 0.03, 0.02), mMetal, 0, 0.10, -0.30);                     // 前准星
+  add(gun, B(0.015, 0.02, 0.22), mats.accent, 0.045, -0.05, -0.20, 0.4);     // 枪带
+  // 斜挎持枪（枪口朝左前上方），比水平端枪更像行军姿态
+  gun.position.set(0.06, 1.05, -0.36);
+  gun.rotation.set(-0.10, 0.26, 0.05);
   gun.userData.part = 'body';
-  g.add(gun);
+
+  g.add(body, legL, legR, armL, armR, gun);
+
+  /* ---- 合批：每个静态组按材质合并，玩家一多也不炸 draw call ---- */
+  if (DF.Models && DF.Models.merge) {
+    [body, legL, legR, armL, armR, gun].forEach(grp => { try { DF.Models.merge(grp); } catch (e) { } });
+  }
+
   // 名牌
   const label = DF.makeNameSprite('', '#ffffff');
-  label.position.y = 2.06;
+  label.position.y = 2.08;
   g.add(label);
 
-  g.userData = { mats, legL, legR, armL, armR, head, torso, gun, label, walkPhase: 0 };
+  g.userData = {
+    mats, body, legL, legR, armL, armR,
+    head: body, torso: body, gun, label, walkPhase: 0,
+    armLBase: armL.rotation.x, armRBase: armR.rotation.x,
+    gunBaseX: gun.rotation.x
+  };
   return g;
 };
 
@@ -2649,8 +2762,8 @@ DF.updateCharacter = function (p, dt) {
   const swing = Math.sin(ud.walkPhase) * Math.min(0.7, speed * 0.1);
   ud.legL.rotation.x = swing;
   ud.legR.rotation.x = -swing;
-  ud.armL.rotation.x = -swing * 0.5;
-  ud.armR.rotation.x = swing * 0.35 - 0.5;
+  ud.armL.rotation.x = (ud.armLBase || 0) + (-swing * 0.5);
+  ud.armR.rotation.x = (ud.armRBase || 0) + (swing * 0.35);
   // 蹲下
   const crouchY = p.crouch ? -0.34 : 0;
   m.position.y = p.pos.y + crouchY * -1;
@@ -2662,7 +2775,7 @@ DF.updateCharacter = function (p, dt) {
     m.rotation.z = lerp(m.rotation.z, 0, Math.min(1, dt * 7));
   }
   // 枪口朝向俯仰
-  ud.gun.rotation.x = clamp(p.pitch * 0.85, -0.9, 0.9);
+  ud.gun.rotation.x = (ud.gunBaseX || 0) + clamp(p.pitch * 0.85, -0.9, 0.9);
   ud.label.visible = p.alive && p.id !== DF.myId;
 };
 
@@ -2812,6 +2925,8 @@ DF.createEffects = function (scene) {
     }
   };
   FX.blood = function (point) {
+    // 第一人称自己中弹时，命中点几乎贴在相机上，血雾会糊满屏幕 —— 直接跳过
+    if (DF.camera && DF.camera.position.distanceToSquared(point) < 1.44) return;
     for (let i = 0; i < 7; i++) {
       const b = FX.bloods.find(x => x.life <= 0);
       if (!b) break;
@@ -10847,10 +10962,13 @@ DF.WujiaMusic.init();
       const meshes = [];
       root.traverse(o => { if (o.isMesh) meshes.push(o); });
       if (meshes.length < 2) return root;
+      const invRoot = new T.Matrix4().copy(root.matrixWorld).invert();
+      const relM = new T.Matrix4();
       const buckets = new Map();
       meshes.forEach(m => {
         let geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
-        geo.applyMatrix4(m.matrixWorld);
+        relM.multiplyMatrices(invRoot, m.matrixWorld);
+        geo.applyMatrix4(relM);
         const key = m.material.uuid + '|' + (m.material.transparent ? 't' : 'o');
         if (!buckets.has(key)) buckets.set(key, { mat: m.material, list: [] });
         buckets.get(key).list.push(geo);
@@ -10907,6 +11025,7 @@ DF.WujiaMusic.init();
       g.userData.containerType = type;
       return g;
     },
+    merge: mergeStatic,
     hasContainer: t => !!CONTAINER_BUILDERS[t],
     hasLoot: k => !!LOOT_BUILDERS[k],
     keys: () => Object.keys(LOOT_BUILDERS)

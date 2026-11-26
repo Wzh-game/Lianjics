@@ -413,10 +413,13 @@
       const meshes = [];
       root.traverse(o => { if (o.isMesh) meshes.push(o); });
       if (meshes.length < 2) return root;
+      const invRoot = new T.Matrix4().copy(root.matrixWorld).invert();
+      const relM = new T.Matrix4();
       const buckets = new Map();
       meshes.forEach(m => {
         let geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
-        geo.applyMatrix4(m.matrixWorld);
+        relM.multiplyMatrices(invRoot, m.matrixWorld);
+        geo.applyMatrix4(relM);
         const key = m.material.uuid + '|' + (m.material.transparent ? 't' : 'o');
         if (!buckets.has(key)) buckets.set(key, { mat: m.material, list: [] });
         buckets.get(key).list.push(geo);
@@ -473,6 +476,7 @@
       g.userData.containerType = type;
       return g;
     },
+    merge: mergeStatic,
     hasContainer: t => !!CONTAINER_BUILDERS[t],
     hasLoot: k => !!LOOT_BUILDERS[k],
     keys: () => Object.keys(LOOT_BUILDERS)
