@@ -302,7 +302,11 @@
     { icon: '◎', name: '撤离专家', desc: '累计成功撤离 3 次', max: 3, cur: d => d.extracted | 0, award: '5,000 哈弗币 + 20 三角券', hafu: 5000, delta: 20 },
     { icon: '✦', name: '百步穿杨', desc: '累计击杀 25 名敌人', max: 25, cur: d => d.kills | 0, award: '3,000 哈弗币 + 10 三角券', hafu: 3000, delta: 10 },
     { icon: '▣', name: '翻箱倒柜', desc: '搜索 40 个物资容器', max: 40, cur: d => d.searched | 0, award: '2,000 哈弗币 + 5 三角券', hafu: 2000, delta: 5 },
-    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30, frame: true }
+    { icon: '△', name: '黑石行动', desc: '在开放大地图「吴家村」完成 1 局行动', max: 1, cur: d => d.frontierRaids | 0, award: '1,000 哈弗币 + 30 三角券 + 头像框「吴家村守望者」', hafu: 1000, delta: 30, frame: true },
+    // ===== S2 赤砂行动 · 赛季任务 =====
+    { icon: '✚', name: '赤砂救援', desc: '在一局内使用医疗箱 / 绷带回复 200 生命', max: 200, cur: d => d.healed | 0, award: '2,500 哈弗币 + 12 三角券', hafu: 2500, delta: 12 },
+    { icon: '▤', name: '情报买卖', desc: '累计带出 5 件史诗及以上物资（金条 / 公文包 / 核心等）', max: 5, cur: d => d.epicExtracted | 0, award: '6,000 哈弗币 + 25 三角券', hafu: 6000, delta: 25 },
+    { icon: '✦', name: '赤砂老兵', desc: 'S2 赛季累计击杀 60 名敌人', max: 60, cur: d => d.kills | 0, award: '8,000 哈弗币 + 40 三角券', hafu: 8000, delta: 40 }
   ];
 
   const CLAIMED_KEY = 'df_missions_claimed';

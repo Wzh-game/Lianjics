@@ -23,7 +23,10 @@ const LOOT = {
   gold:    { name: '金条',        short: '金条',  value: 8000,  slot: 2, weight: 1.5, size: 2, color: '#c07ad8', w: 4 },
   intel:   { name: '情报硬盘',    short: '情报',  value: 6000,  slot: 2, weight: 0.5, size: 1, color: '#c07ad8', w: 4 },
   // 传说（橙）
-  core:    { name: '机密核心',    short: '核心',  value: 18000, slot: 2, weight: 1.0, size: 2, color: '#ff8c1a', w: 1 }
+  core:    { name: '机密核心',    short: '核心',  value: 18000, slot: 2, weight: 1.0, size: 2, color: '#ff8c1a', w: 1 },
+  // ===== S2 赛季新增 =====
+  medkit:  { name: '战术医疗箱',  short: '医疗箱', value: 1600, slot: 2, weight: 1.6, size: 2, color: '#7dd069', w: 12, heal: 80 },
+  case:    { name: '加密公文包',  short: '公文包', value: 9800, slot: 2, weight: 1.2, size: 2, color: '#c07ad8', w: 3 }
 };
 const LOOT_KEYS = Object.keys(LOOT);
 const SAFE_SLOTS = 2;        // 保险箱格数
@@ -53,7 +56,7 @@ const CONTAINER_TYPES = {
    资产档案（持久化）
    ============================================================ */
 DF.Profile = {
-  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0, safeBonus: 0 },
+  data: { raids: 0, extracted: 0, died: 0, bank: 0, best: 0, last: 0, kills: 0, searched: 0, frontierRaids: 0, frontierExtracted: 0, delta: 0, safeBonus: 0, healed: 0, epicExtracted: 0 },
   load() {
     try {
       const raw = localStorage.getItem('df_profile');
@@ -78,6 +81,17 @@ DF.Profile = {
   addSearch() {
     const d = this.data;
     d.searched = (d.searched | 0) + 1;
+    this.save();
+  },
+  // S2 赛季任务计数：累计治疗量 / 带出的史诗及以上物资件数
+  addHeal(n) {
+    const d = this.data;
+    d.healed = (d.healed | 0) + Math.max(0, Math.round(n || 0));
+    this.save();
+  },
+  addEpicExtract(n) {
+    const d = this.data;
+    d.epicExtracted = (d.epicExtracted | 0) + Math.max(0, n | 0);
     this.save();
   },
   addDelta(n) {
@@ -436,6 +450,11 @@ DF.onPlayerExtracted = function (p, ex, value) {
   });
   if (p.isLocal) {
     DF.Profile.addExtraction(value, p.kills, DF.mapId);
+    try {
+      const epic = (p.inv ? (p.inv.bag || []).concat(p.inv.safe || []) : [])
+        .filter(it => (LOOT[it.key] || {}).value >= 6000).length;
+      if (epic && DF.Profile.addEpicExtract) DF.Profile.addEpicExtract(epic);
+    } catch (e) { }
     DF.M.onLocalExtracted && DF.M.onLocalExtracted(p, ex, value);
   }
   // 移出战场（保留数据用于结算）
@@ -581,7 +600,11 @@ DF.takeItem = function (idx) {
   item.taken = true;
   me.inv.bag.push({ key: item.key, id: item.id });
   if (DF.removeLootVisual) DF.removeLootVisual(item.id);
-  if (def.heal) { me.hp = Math.min(CFG.maxHp, me.hp + def.heal); }
+  if (def.heal) {
+    const before = me.hp;
+    me.hp = Math.min(CFG.maxHp, me.hp + def.heal);
+    if (me.isLocal && DF.Profile.addHeal) DF.Profile.addHeal(me.hp - before);
+  }
   if (def.armor) { me.armor = Math.min(0.55, (me.armor || 0) + def.armor); }
   DF.Audio.loot && DF.Audio.loot();
   DF.refreshLootUI();
@@ -623,7 +646,9 @@ DF.useItem = function (bagIdx) {
   const def = LOOT[it.key];
   if (!def.heal) { DF.toast(`${def.name} 无法直接使用`); return; }
   if (me.hp >= CFG.maxHp) { DF.toast('生命值已满'); return; }
+  const hpBefore = me.hp;
   me.hp = Math.min(CFG.maxHp, me.hp + def.heal);
+  if (me.isLocal && DF.Profile.addHeal) DF.Profile.addHeal(me.hp - hpBefore);
   me.inv.bag.splice(bagIdx, 1);
   DF.toast(`使用了 ${def.name}，恢复 ${def.heal} 生命`);
   DF.refreshLootUI();
