@@ -4,7 +4,7 @@
 'use strict';
 const T = THREE;
 const DF = {};
-DF.VERSION = '1.12.0';
+DF.VERSION = '1.12.1';
 
 // 无 user gesture 时 requestPointerLock 会同步抛错或返回 rejected Promise（客人收到 start 直接进场即触发）。
 // 统一静默吞掉，锁定交给玩家点按画布时再做。

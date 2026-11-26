@@ -1184,12 +1184,38 @@
       <div class="abil ult" data-slot="2" data-key="V"><div class="key">V</div><div class="icon">?</div><div class="cd"></div><div class="nm"></div></div>
       <div class="passive"><div class="tag">被动</div><div class="pnm"></div></div>`;
     hud.appendChild(bar);
+    // v1.12.1：技能按钮支持点按释放（触屏设备没有 Q/E/V 键盘，之前点了完全没反应）
+    bar.querySelectorAll('.abil').forEach(el => {
+      const slot = +el.getAttribute('data-slot');
+      el.setAttribute('role', 'button');
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 220);
+        DF.useAbility(slot);
+      }, { passive: false });
+      // 吞掉后续 click，避免 iOS 双击缩放 / 事件穿透到画布
+      el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+      el.addEventListener('contextmenu', e => e.preventDefault());
+    });
     const squad = document.createElement('div');
     squad.id = 'squadwrap';
     squad.innerHTML = `<div class="sqtitle">AI 队员 <span id="squad-heal-hint">G · 呼叫治疗</span></div>
       <div class="allyrow" id="ally0"><span class="an"></span><div class="abar"><i></i></div></div>
       <div class="allyrow" id="ally1"><span class="an"></span><div class="abar"><i></i></div></div>`;
     hud.appendChild(squad);
+    // 呼叫治疗也可以点（触屏没有 G 键）
+    const healHint = squad.querySelector('#squad-heal-hint');
+    if (healHint) {
+      healHint.setAttribute('role', 'button');
+      healHint.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (DF.callSquadHeal) DF.callSquadHeal();
+      }, { passive: false });
+      healHint.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+    }
     const marks = document.createElement('div');
     marks.id = 'marklayer';
     hud.appendChild(marks);
