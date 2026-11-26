@@ -126,6 +126,22 @@ DF.init = function () {
   const scene = new T.Scene();
   DF.scene = scene;
   const camera = new T.PerspectiveCamera(78, window.innerWidth / window.innerHeight, 0.05, 2600);   // 远平面需盖住开放大地图的天空球与远山
+  /* ---------------- 视角模式：第一人称 / 第三人称（v2.2） ---------------- */
+  DF.viewMode = (function () {
+    try { return localStorage.getItem('df_viewmode') === 'tps' ? 'tps' : 'fps'; } catch (e) { return 'fps'; }
+  })();
+  DF.setViewMode = function (mode, silent) {
+    DF.viewMode = (mode === 'tps') ? 'tps' : 'fps';
+    try { localStorage.setItem('df_viewmode', DF.viewMode); } catch (e) { }
+    const vm = DF.viewModel;
+    if (vm) vm.visible = DF.viewMode === 'fps';
+    const btn = document.getElementById('t-view');
+    if (btn) { btn.textContent = DF.viewMode === 'tps' ? '三人称' : '第一称'; btn.classList.toggle('active', DF.viewMode === 'tps'); }
+    const mb = document.getElementById('btn-viewmode');
+    if (mb) mb.textContent = '视角：' + (DF.viewMode === 'tps' ? '第三人称' : '第一人称');
+    if (!silent && DF.toast) DF.toast(DF.viewMode === 'tps' ? '已切换：第三人称视角（P 键切换）' : '已切换：第一人称视角（P 键切换）');
+  };
+  DF.toggleViewMode = function () { DF.setViewMode(DF.viewMode === 'tps' ? 'fps' : 'tps'); };
   camera.position.set(0, CFG.eye, 0);
   scene.add(camera);
   DF.camera = camera;
@@ -213,6 +229,7 @@ DF.bindInput = function () {
       else if (!DF.lootOpen) DF.showScoreboard(false);
     }
     if (k === 'KeyF' && down) { DF.tryInteract && DF.tryInteract(); }
+    if (k === 'KeyP' && down) { DF.toggleViewMode && DF.toggleViewMode(); }
     if (k === 'KeyT' && down && DF.matchRunning) { DF.openChat(); }
     if (k === 'KeyM' && down) { DF.Audio.muted = !DF.Audio.muted; DF.Music.audio.muted = DF.Audio.muted; DF.toast(DF.Audio.muted ? '已静音' : '声音已开启'); }
     if (k === 'Escape' && down) { if (document.pointerLockElement) document.exitPointerLock(); }
@@ -530,6 +547,11 @@ DF.bindTouch = function () {
     const me = DF.players.get(DF.myId);
     if (DF.matchRunning && !DF.paused && me && me.alive && !me.searching && !DF.lootOpen) DF.openLootUI(null);
   });
+  btn('t-view', () => { if (DF.toggleViewMode) DF.toggleViewMode(); });
+  const btnView = document.getElementById('btn-viewmode');
+  if (btnView) {
+    btnView.addEventListener('click', () => { DF.toggleViewMode && DF.toggleViewMode(); });
+  }
   btn('t-menu', () => {
     T_.fireHeld = false; DF.input.fire = false;
     DF.showPause(true);
@@ -1551,6 +1573,15 @@ DF.tryLocalFire = function () {
   const origin = new T.Vector3();
   cam.getWorldPosition(origin);
   const dir = new T.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+  // 第三人称：相机在角色身后 → 先用相机射线找到准星真正指向的点，再从角色眼点朝该点射击
+  // （这样近距离目标也打得中，不会因为肩部偏移产生视差）
+  if (DF.viewMode === 'tps') {
+    const camO = origin.clone(), camD = dir.clone();
+    const probe = DF.traceShot(camO, camD, 90, DF.myId);
+    const aim = probe.hit ? probe.point.clone() : camO.addScaledVector(camD, 60);
+    origin.set(me.pos.x, me.pos.y + (me.crouch ? CFG.crouchEye : CFG.eye), me.pos.z);
+    dir.copy(aim).sub(origin).normalize();
+  }
   // 弹道散布
   const effSpr = DF.effSpread ? DF.effSpread(me) : 1;
   const effAds = DF.effAdsSpread ? DF.effAdsSpread(me) : 1;
@@ -1626,6 +1657,12 @@ DF.buildInput = function () {
   };
 };
 
+/* 第三人称相机临时对象（模块级，避免每帧新建） */
+const _tpsEye = new T.Vector3(), _tpsFwd = new T.Vector3(), _tpsRight = new T.Vector3();
+const _tpsWant = new T.Vector3(), _tpsSeg = new T.Vector3(), _tpsPos = new T.Vector3();
+const _tpsLook = new T.Vector3(), _tpsUp = new T.Vector3(0, 1, 0);
+const _tpsM = new T.Matrix4(), _tpsQ = new T.Quaternion();
+
 DF.updateLocalPlayer = function (dt) {
   const me = DF.players.get(DF.myId);
   if (!me) return;
@@ -1700,14 +1737,39 @@ DF.updateLocalPlayer = function (dt) {
   // 触屏宽屏：相机略微下移抬高视角，使枪身落在画面下缘留白处
   const wideCam = DF.touch.enabled ? clamp((DF.camera.aspect - 1.72) / 0.45, 0, 1) * 0.22 : 0;
   const wantY = me.pos.y + eye + bobY + wideCam * 0.11 + (driving ? Math.sin(DF.time * 9) * Math.min(0.03, Math.abs(DF.driveVehicle.speed) * 0.0022) : 0);
-  if (driving) {
+  const tps = (DF.viewMode === 'tps') && !driving;
+  if (tps) {
+    /* ===== 第三人称：角色身后偏右肩，撞墙自动拉近（贴墙时不穿模） ===== */
+    _tpsEye.set(me.pos.x, me.pos.y + eye, me.pos.z);
+    const cp = Math.cos(me.pitch), sp = Math.sin(me.pitch);
+    _tpsFwd.set(-Math.sin(me.yaw) * cp, sp, -Math.cos(me.yaw) * cp);
+    _tpsRight.set(Math.cos(me.yaw), 0, -Math.sin(me.yaw));
+    const dist = me.ads ? 1.55 : 3.25;
+    const shoulder = me.ads ? 0.34 : 0.60;
+    _tpsWant.copy(_tpsEye).addScaledVector(_tpsFwd, -dist).addScaledVector(_tpsRight, shoulder);
+    _tpsWant.y += me.crouch ? 0.34 : 0.56;
+    _tpsSeg.subVectors(_tpsWant, _tpsEye);
+    const segLen = _tpsSeg.length();
+    let dUse = segLen;
+    if (segLen > 0.001) {
+      _tpsSeg.divideScalar(segLen);
+      const wh = DF.raycastWorld ? DF.raycastWorld(_tpsEye, _tpsSeg, segLen + 0.35) : null;
+      if (wh && wh.distance < segLen) dUse = Math.max(0.5, wh.distance - 0.25);
+    }
+    _tpsPos.copy(_tpsEye).addScaledVector(_tpsSeg, dUse);
+    _tpsPos.y = Math.max(_tpsPos.y, me.pos.y + 0.32);
+    DF.camera.position.lerp(_tpsPos, Math.min(1, dt * (me.ads ? 18 : 12)));
+    _tpsLook.copy(_tpsEye).addScaledVector(_tpsFwd, 14);
+    _tpsM.lookAt(DF.camera.position, _tpsLook, _tpsUp.set(0, 1, 0));
+    DF.camera.quaternion.slerp(_tpsQ.setFromRotationMatrix(_tpsM), Math.min(1, dt * 22));
+  } else if (driving) {
     const hv = DF.driveVehicle;
     const hx = -Math.sin(hv.heading), hz = -Math.cos(hv.heading);
     DF.camera.position.lerp(new T.Vector3(me.pos.x + hx * 0.5, wantY, me.pos.z + hz * 0.5), Math.min(1, dt * 22));
   } else {
     DF.camera.position.lerp(new T.Vector3(me.pos.x + bobX * 0.3, wantY, me.pos.z), Math.min(1, dt * 22));
+    DF.camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
   }
-  DF.camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
 
   // 视图模型动画
   const vm = DF.viewModel;
@@ -1755,10 +1817,10 @@ DF.updateLocalPlayer = function (dt) {
     // 准镜透明度
     vm.userData.redDot.material.opacity = 1;
     vm.userData.redDot.visible = true;
-    vm.visible = true;
+    vm.visible = !tps;
   }
   // 机瞄视野缩放
-  const wantFov = me.ads ? 58 : 78;
+  const wantFov = me.ads ? (tps ? 64 : 58) : 78;
   if (Math.abs(DF.camera.fov - wantFov) > 0.3) {
     DF.camera.fov = lerp(DF.camera.fov, wantFov, Math.min(1, dt * 12));
     DF.camera.updateProjectionMatrix();
@@ -1811,7 +1873,7 @@ DF.loop = function (ts) {
   });
   // 本地玩家模型隐藏（第一人称）
   const me = DF.players.get(DF.myId);
-  if (me && me.mesh) me.mesh.visible = false;
+  if (me && me.mesh) me.mesh.visible = (DF.viewMode === 'tps' && me.alive);
 
   // 机器人思考（仅房主/单人）
   if (DF.mode !== 'guest') {

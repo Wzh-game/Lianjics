@@ -315,6 +315,8 @@ h2.ptitle span{color:var(--accent)}
 #t-sprint{right:206px;bottom:calc(14px + env(safe-area-inset-bottom));width:56px;height:56px}
 #t-menu{right:14px;top:14px;bottom:auto;width:42px;height:42px;border-radius:10px;font-size:18px;line-height:1}
 #t-bag{right:14px;top:64px;bottom:auto;width:56px;height:46px;border-radius:10px}
+#t-view{right:14px;top:118px;bottom:auto;width:56px;height:46px;border-radius:10px;font-size:11px}
+#t-view.active{border-color:var(--accent);color:#ffcf83}
 #t-interact{left:50%;bottom:20%;transform:translateX(-50%);width:132px;height:48px;border-radius:12px;
   background:rgba(30,38,20,.92);border-color:var(--accent);font-weight:700;color:#fff;white-space:nowrap}
 #t-interact.active{transform:translateX(-50%) scale(.96)}
@@ -367,10 +369,13 @@ body.loot-active #touchui{visibility:hidden}
 }
 /* 小屏手机横屏：把技能栏压到「跳跃」按钮上方的空档里（此规则必须在 max-height:430 之后） */
 @media (pointer:coarse) and (max-height:430px){
-  #abilbar{right:10px;bottom:calc(190px + env(safe-area-inset-bottom));gap:5px}
-  #abilbar .abil{width:44px;height:44px}
-  #abilbar .abil .icon{font-size:16px}
+  #abilbar{right:4px;bottom:calc(150px + env(safe-area-inset-bottom));gap:4px}
+  #abilbar .abil{width:32px;height:32px}
+  #abilbar .abil .icon{font-size:14px}
+  #abilbar .abil .key{display:none}
   #abilbar .passive{display:none}
+  #t-jump{right:40px}
+  #t-view{display:none}
 }
 @media (max-width:760px){
   h1.logo{font-size:34px}.modegrid{grid-template-columns:1fr}.ctrls{grid-template-columns:repeat(2,1fr)}
@@ -523,6 +528,7 @@ body.touchmode #joystickHint{display:none}
   <button class="tbtn sm" id="t-sprint">跑</button>
   <button class="tbtn" id="t-menu" aria-label="暂停菜单">≡</button>
   <button class="tbtn sm" id="t-bag" aria-label="打开背包">背包</button>
+  <button class="tbtn sm" id="t-view" aria-label="切换第一/第三人称">第一称</button>
   <button class="tbtn hidden" id="t-interact" aria-label="搜索附近容器">搜索</button>
   <div id="touchhint">左摇杆移动 · 右半屏滑动转视角 · 「开火」射击</div>
 </div>
@@ -1019,7 +1025,7 @@ body.touchmode #joystickHint{display:none}
       </div>
 
       <div class="df-controls"><b>WASD</b>移动&nbsp; <b>Shift</b>疾跑&nbsp; <b>空格</b>跳跃&nbsp; <b>左键</b>射击&nbsp; <b>右键</b>机瞄&nbsp; <b>R</b>装弹&nbsp; <b>Tab</b>计分板&nbsp; <b>M</b>静音</div>
-      <div class="df-ver">DELTA FORCE · WEB OPS — v2.1</div>
+      <div class="df-ver">DELTA FORCE · WEB OPS — v2.2</div>
     </section>
 
     <!-- ───────── 干员 ───────── -->
@@ -1146,6 +1152,7 @@ body.touchmode #joystickHint{display:none}
     <div class="sub" id="pause-note">点击继续后重新锁定鼠标视角。</div>
     <div class="row" style="justify-content:center;margin-top:10px">
       <button class="btn primary" id="btn-resume">继续战斗</button>
+      <button class="btn" id="btn-viewmode">视角：第一人称</button>
       <button class="btn" id="btn-quit">返回主菜单</button>
     </div>
   </div>
