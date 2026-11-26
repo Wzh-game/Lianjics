@@ -1,6 +1,6 @@
 /* ============================================================
    吴家村专属小曲《十一笔》
-   双击主菜单标题「三角洲行动」播放/暂停；无等级、击杀数或名称限制。
+   双击主菜单标题「三胶着行动」播放/暂停；无等级、击杀数或名称限制。
    桌面端支持鼠标双击，iPad/手机支持双击（双击）标题。
    ============================================================ */
 DF.WujiaMusic = (() => {
@@ -68,7 +68,7 @@ DF.WujiaMusic = (() => {
     title.style.cursor = 'pointer';
     title.style.touchAction = 'manipulation';
     title.setAttribute('title', '双击播放 / 暂停吴家村专属小曲《十一笔》');
-    title.setAttribute('aria-label', '三角洲行动，双击播放或暂停吴家村专属小曲《十一笔》');
+    title.setAttribute('aria-label', '三胶着行动，双击播放或暂停吴家村专属小曲《十一笔》');
 
     // 桌面浏览器：鼠标双击。
     title.addEventListener('dblclick', event => {
